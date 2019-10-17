@@ -1,0 +1,12 @@
+name: wqdashboard
+title: wqdashboard
+username:
+account: peernisse
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 1339775
+bundleId: 2506970
+url: https://peernisse.shinyapps.io/wqdashboard/
+when: 1571274667.52638
+asMultiple: FALSE
+asStatic: FALSE
