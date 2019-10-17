@@ -13,17 +13,24 @@ ui <- dashboardPage(
   ),
   dashboardBody(
     tabItems(
-      # First tab content
+      # Home tab content
       tabItem(tabName = "home",
               h2('Water Quality Explorer'),
               h3('Overview'),
               h3('Disclaimer')
       ),
       
-      # Second tab content
+      # Import tab content
       tabItem(tabName = "dataimport",
               h2("Data Import Instructions"),
-              h2('Required Data Format')
+              h2('Required Data Format'),
+              hr(),
+              h2('Data Import'),
+              fluidRow(
+                column(6,
+                       
+                       fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'))
+              )
       )
     )
   )
