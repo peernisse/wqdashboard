@@ -28,7 +28,8 @@ ui <- dashboardPage(
       menuItem("Data Import", tabName = "dataimport", icon = icon("th")),
       menuItem('Plots',tabName='plots',icon=icon('chart-bar')),
       menuItem("Tables",tabName = 'tables',icon=icon('file-alt')),
-      menuItem("Regression Tools",tabName = 'regression',icon=icon('chart-line'))
+      menuItem("Regression Tools",tabName = 'regression',icon=icon('chart-line')),
+      menuItem("Map Tools",tabName = 'maptools',icon=icon('map'))
     )#Sidebar menu
       
   ),#dashboardSidebar
@@ -38,7 +39,8 @@ ui <- dashboardPage(
       tabItem(tabName = "home",
               h2('Water Quality Explorer'),
               h3('Overview'),
-              h3('Disclaimer')
+              h3('Disclaimer'),
+              h3('References')
       ),#Home tab
       
       # Import tab content
@@ -82,7 +84,19 @@ ui <- dashboardPage(
       tabItem(tabName = 'regression',
               h2('Regression Tools')
               
-      )#Tables tab
+      ),#Tables tab
+      
+      #Tables tab
+      tabItem(tabName = 'tables',
+              h2('Table Tools')
+              
+      ),#Map tab
+      
+      #Regression tab
+      tabItem(tabName = 'maptools',
+              h2('Map Tools')
+              
+      )#Map tab
       
     )#Dashboard body
   )#????
