@@ -1,7 +1,14 @@
 ## app.R ##
 library(shiny)
 library(shinydashboard)
+library(tidyverse)
+source('helpers.R')
+options(scipen = 6)
 
+#Data import testing read in
+#tbl<-read.csv('./wqdashboard/data/testData.csv',stringsAsFactors = FALSE)
+
+#Start App--------------------------
 ui <- dashboardPage(
   dashboardHeader(title='Water Quality Explore',
                   
@@ -55,9 +62,9 @@ ui <- dashboardPage(
               
               h4('Or'),
               
-              actionButton(inputId = 'demoLoad',label = 'Load Demo Data'),
-              verbatimTextOutput('rows')
-              
+
+              actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+
       ),#Import tab
       
       # Plotting tab
@@ -82,23 +89,17 @@ ui <- dashboardPage(
       
       #Tables tab
       tabItem(tabName = 'tables',
-              h2('Table Tools')
-              
+              h2('Table Tools'),
+              dataTableOutput('tblData')
               ),#Tables tab
       
       #Regression tab
       tabItem(tabName = 'regression',
               h2('Regression Tools')
               
-      ),#Tables tab
-      
-      #Tables tab
-      tabItem(tabName = 'tables',
-              h2('Table Tools')
-              
-      ),#Map tab
-      
-      #Regression tab
+      ),#Regression tab
+     
+      #Map tab
       tabItem(tabName = 'maptools',
               h2('Map Tools')
               
@@ -127,8 +128,11 @@ server <- function(input, output,session) {
   #######################################################
   #TESTING DATA INPUT
   
-  pData<-read.csv('C:/R_Projects/wqdashboard/wqdashboard/data/testData.csv',stringsAsFactors = FALSE)
   
+  #####################################################
+  #######################################################
+  ####################################################
+
   #File input load--------------
   pData <- reactive({
     
@@ -137,14 +141,16 @@ server <- function(input, output,session) {
     }
     
     if(input$demoLoad > 0){
-      
+
       inFile<-data.frame(
         name='demoData',
         size=1413000,
         type='csv',
-        datapath='C:/R_Projects/wqdashboard/wqdashboard/data/testData.csv'
+
+        datapath='./wqdashboard/data/testData.csv'
+
       )
-      
+
       inFile$datapath<-as.character(inFile$datapath)
     }
     
@@ -157,6 +163,7 @@ server <- function(input, output,session) {
     tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
     
     #Fix date format
+
     #tbl$Date<-as.POSIXct(strptime(tbl$sample_date,format="%d/%b/%y"))
     #Fix unit cases
     #tbl$Units<-fixUnits(tbl)
@@ -165,11 +172,71 @@ server <- function(input, output,session) {
     #Make non detect substitution columns
     #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
     #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
+
+    tbl$DATE<-as.POSIXct(strptime(tbl$sample_date,format="%m/%d/%Y"))
+    #Fix unit cases
+    tbl<-fixUnits(tbl)
+    #Create names for total and dissolved instead of just letters
+    tbl <- tbl %>%
+      mutate(PREP_CODE = case_when(
+        
+        fraction == 'D' ~ 'Dissolved',
+        fraction == 'T' ~ 'Total',
+        TRUE ~ fraction
+        
+      ),
+      PARAMETER=paste0(chemical_name,', ',PREP_CODE,' (',UNITS,')'),
+      RESULT=case_when(
+        
+        is.na(result_text) ~ 0,
+        TRUE ~ result_text
+        
+      ),
+      RESULT_ND = case_when(
+        
+        detect_flag== 'Y' ~ RESULT,
+        TRUE ~ 0.5*(reporting_detection_limit)
+        
+      ),
+      NDS = case_when(
+        
+        detect_flag == 'N' ~ 0.5*(reporting_detection_limit)
+        
+      )
+        )
+
     
-    return(tbl)
+   return(tbl)
   })
   
-  output$rows<-nrow(pData())
+  
+#Data table ouput----------------------------
+  output$tblData<-renderDataTable({
+    
+    if(is.null(input$file))
+      return()
+    
+    dtable<-pData()
+    
+    return(dtable)
+    
+  })
+  
+  
+  
 }
 
+
+
+
+
+
 shinyApp(ui, server)
+
+
+
+
+
+
+
+
