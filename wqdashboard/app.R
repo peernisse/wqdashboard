@@ -62,7 +62,9 @@ ui <- dashboardPage(
               
               h4('Or'),
               
+
               actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+
       ),#Import tab
       
       # Plotting tab
@@ -107,8 +109,14 @@ ui <- dashboardPage(
   )#????
 )#Dashboard page?
 
+###########################################################
+#Server side section---------------------------------------
+###################################
+
 server <- function(input, output,session) {
   
+  #######################################################
+  #Placeholder histogram to be removed
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
     x    <- faithful[, 2] 
@@ -117,11 +125,14 @@ server <- function(input, output,session) {
     # draw the histogram with the specified number of bins
     hist(x, breaks = bins, col = 'darkgray', border = 'white')
   })
+  #######################################################
+  #TESTING DATA INPUT
   
   
   #####################################################
   #######################################################
   ####################################################
+
   #File input load--------------
   pData <- reactive({
     
@@ -135,7 +146,9 @@ server <- function(input, output,session) {
         name='demoData',
         size=1413000,
         type='csv',
+
         datapath='./wqdashboard/data/testData.csv'
+
       )
 
       inFile$datapath<-as.character(inFile$datapath)
@@ -148,7 +161,18 @@ server <- function(input, output,session) {
     
     #Read in table
     tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+    
     #Fix date format
+
+    #tbl$Date<-as.POSIXct(strptime(tbl$sample_date,format="%d/%b/%y"))
+    #Fix unit cases
+    #tbl$Units<-fixUnits(tbl)
+    #Add units to parameter column
+    #tbl$Parameter<-paste0(tbl$Parameter,' (',tbl$Units,')')
+    #Make non detect substitution columns
+    #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
+    #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
+
     tbl$DATE<-as.POSIXct(strptime(tbl$sample_date,format="%m/%d/%Y"))
     #Fix unit cases
     tbl<-fixUnits(tbl)
@@ -180,6 +204,7 @@ server <- function(input, output,session) {
         
       )
         )
+
     
    return(tbl)
   })
@@ -196,8 +221,6 @@ server <- function(input, output,session) {
     return(dtable)
     
   })
-  
-  
   
   
   
