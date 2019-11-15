@@ -29,7 +29,8 @@ ui <- dashboardPage(
                   
                   
                   ),#Dashboarrd header
-  dashboardSidebar(
+  dashboardSidebar(width=400,
+    h3('Pages',style = "margin-left:5px;"),
     sidebarMenu(
       menuItem("Home", tabName = "home", icon = icon("dashboard")),
       menuItem("Data Import", tabName = "dataimport", icon = icon("th")),
@@ -37,33 +38,125 @@ ui <- dashboardPage(
       menuItem("Tables",tabName = 'tables',icon=icon('file-alt')),
       menuItem("Regression Tools",tabName = 'regression',icon=icon('chart-line')),
       menuItem("Map Tools",tabName = 'maptools',icon=icon('map'))
-    )#Sidebar menu
+    ),#Sidebar menu
+    tags$hr(color='white'),
+    h3('Filter Tools',style = "margin-left:5px;"),
+    fluidRow(
+        column(6,
+               h5(strong('Choose Matrices',style = "margin-left:5px;")),
+               actionLink('selectall_Matrix','Select All | Clear All'),
+               wellPanel(id='sitePanel',style = "overflow-y:scroll; max-height: 180px; margin-left:5px",
+                         uiOutput('choose_matrix',style = "color:black;")
+               )
+               
+        ),
+        
+        column(6,
+               h5(strong('Choose Sites')),
+               actionLink('selectall_Sites','Select All | Clear All'),
+               wellPanel(id='sitePanel',style = "overflow-y:scroll; max-height: 180px; margin-right:5px",
+                         uiOutput('choose_sites',style = "color:black;")
+               )
+               
+        )
+      
+    ),#fluid row
+    
+    fluidRow(
+        column(6,
+               h5(strong("Choose Locations",style = "margin-left:5px;")),
+               actionLink("selectall_Locs","Select All | Clear All"),
+               
+               wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 180px;margin-left:5px",
+                         uiOutput('choose_locs',style = "color: black;")
+                         
+               )
+               
+        ),
+        column(6,
+               h5(strong("Choose Parameters")),
+               actionLink('selectall_Params','Select All | Clear All'),
+               wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 180px;margin-right:5px",
+                         uiOutput('choose_params',style = "color:black;")
+                         
+               )
+               
+        )
+    ),#fluid row
+    
+    h5(strong("Choose Date Range",style = "margin-left:5px")),
+    fluidRow(
+      column(8,uiOutput('choose_dates')),
+      column(1,uiOutput('reset_dates'))
+    )
       
   ),#dashboardSidebar
+  
+  
+  
   dashboardBody(
     tabItems(
       # Home tab content
       tabItem(tabName = "home",
               h2('Water Quality Explorer'),
+              p('This application is a generic environemntal data analysis tool. It is designed for use with censored and/or uncensored water, groundwater,
+                soil, and air data.'),
+              p('A focus of the application is comparison of environmental data to local or federal regulatory standards, either point by ponit, or in a statistical manner (e.g., confidence intervals, control charts).'),
               h3('Overview'),
+              tags$ul(
+                tags$li('Import data from CSV'),
+                tags$li('Exploration plots'),
+                tags$li('Reporting table generation'),
+                tags$li('Regression analysis tools'),
+                tags$li('Mapping data locations')
+              ),
               h3('Disclaimer'),
-              h3('References')
+              p('This application is intended for exploratory data analysis. Any statistical tools/tests should be used
+                at the discretion of the user, and the user is responsible for any conclusions or decisoins made as a result
+                of statistical analysis results.'),
+              h3('References'),
+              tags$ul(
+              tags$li('[R base 2019]. R Core Team (2018). R: A language and environment for statistical computing. R Foundation for
+  Statistical Computing, Vienna, Austria. URL https://www.R-project.org/.'),
+              tags$li('[ggplot2]. H. Wickham. ggplot2: Elegant Graphics for Data Analysis. Springer-Verlag New York, 2016.'),
+              tags$li('Bruce, P. and Bruce, A. "Practical Statistics for Data Scientists". Oreilly (2017). ISBN:978-1-491-95296-2.')
+              )
+              
+      
       ),#Home tab
       
       # Import tab content
       tabItem(tabName = "dataimport",
-              h2("Data Import Instructions"),
-              h2('Required Data Format'),
-              hr(),
-              h2('Data Import'),
-              fluidRow(
-                column(6,fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'))
-              ),#File import row
               
-              h4('Or'),
+              column(4,
+                     h2('Data Import Instructions'),
+                     p('Upfront text'),
+                     box(width=12,
+                       h2('Data Import'),
+                       fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                       tags$em('Use Demo Data'),
+                       actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+                     )
+              ),#first column,
+                       
+              column(8,
+                h2("Required Data Format"),
+                p('Upfront text'),
+                
+                tags$ul(
+                  
+                  tags$li('This app is hosted on the secure R Shinyapps.io server at https://peernisse/shinyapps.io/wqdashboard/.'),
+                  tags$li('If you have R installed and use R, you can download this app from https://github.com/peernisse/wqdashboard/.'),
+                  tags$li('The data to be analyzed must be in a `.csv` file in a local directory.'),
+                  tags$li('The data are not transfered to the app server to preserve data security.')
+                ),
+                
+                h3('Your Data File Should Contain the Folowing Columns'),
+                h3('Example Table Structure')
+              )#Second column,
               
-
-              actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+             
+              
 
       ),#Import tab
       
@@ -147,11 +240,12 @@ server <- function(input, output,session) {
         size=1413000,
         type='csv',
 
-        datapath='./wqdashboard/data/testData.csv'
+        datapath='./data/testData.csv'
 
       )
 
       inFile$datapath<-as.character(inFile$datapath)
+      
     }
     
     
@@ -173,7 +267,7 @@ server <- function(input, output,session) {
     #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
     #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
 
-    tbl$DATE<-as.POSIXct(strptime(tbl$sample_date,format="%m/%d/%Y"))
+    tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
     #Fix unit cases
     tbl<-fixUnits(tbl)
     #Create names for total and dissolved instead of just letters
@@ -185,7 +279,7 @@ server <- function(input, output,session) {
         TRUE ~ fraction
         
       ),
-      PARAMETER=paste0(chemical_name,', ',PREP_CODE,' (',UNITS,')'),
+      Parameter=paste0(chemical_name,', ',PREP_CODE,' (',UNITS,')'),
       RESULT=case_when(
         
         is.na(result_text) ~ 0,
@@ -209,22 +303,219 @@ server <- function(input, output,session) {
    return(tbl)
   })
   
-  
-#Data table ouput----------------------------
-  output$tblData<-renderDataTable({
+  #Get min and max dates
+  baseDates <- reactive({
+    if(input$demoLoad == 0) {
+      inFile <- input$file
+    }
     
-    if(is.null(input$file))
-      return()
+    if(input$demoLoad > 0){
+      
+      inFile<-data.frame(
+        name='demoData',
+        size=1413000,
+        type='csv',
+        datapath='./data/testData.csv'
+      )
+      
+      inFile$datapath<-as.character(inFile$datapath)
+    }
     
-    dtable<-pData()
+    if (is.null(inFile))
+      return(NULL)
     
-    return(dtable)
+    dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+    dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+    bDates<-c(min(dts$Date),max(dts$Date))
+    
+    return(bDates)#This could possibly combined into pData() as a separate output and referenced pData()$bDates
     
   })
   
   
+#Data table ouput----------------------------
+  # output$tblData<-renderDataTable({
+  # 
+  #   # if(is.null(input$file))
+  #   #   return()
+  # 
+  #   dtable<-pData()
+  # 
+  #   return(dtable)
+  # 
+  # })#output tblData
   
-}
+  
+  #Buttons-------------------------------------------------
+  #Date range refresh button action
+  observeEvent(input$clrDates,{
+    
+    updateDateRangeInput(session,inputId = 'dtRng', start = baseDates()[1], end = baseDates()[2])
+  })
+  
+  #Create refresh date range button
+  output$reset_dates <- renderUI({
+    if(is.null(pData()))
+      return()
+    actionButton('clrDates',NULL,
+                 icon("refresh"), 
+                 style="color: #fff; background-color: #337ab7; 
+                  border-color: #2e6da4;font-size:90%; width:35px; 
+                 height:30px;margin-top:10px; ")
+  })
+  
+  
+  #Pickers----------------------------------------------------
+  
+  #Create location picker
+  #This loads up by default with no choices available
+  output$choose_locs<-renderUI({
+
+    if(is.null(pData()))
+      return()
+    locs<-sort(unique(pData()$Location))
+
+    checkboxGroupInput('locids',NULL,
+                       choices = locs,
+                       selected = NULL)
+    
+    
+    
+  })
+  
+  #THis listens for values selected in other checkbox groups and changes accordingly
+  observe({
+
+    if(is.null(pData()))
+      return()
+    lulocs<-pData() %>% filter(Site %in% input$sts,Matrix %in% input$mtrx)
+    locs<-sort(unique(lulocs$Location))
+
+
+
+    if(input$selectall_Locs == 0)
+    {
+      updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=NULL)
+    }
+    else if (input$selectall_Locs%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"locids",NULL,choices=locs)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=locs)
+    }
+
+  })
+
+
+  #Create parameter picker
+  observe({
+    params<-sort(unique(pData()$Parameter))
+    if(input$selectall_Params == 0) return(NULL)
+    else if (input$selectall_Params%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"params",NULL,choices=params)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"params",NULL,choices=params,selected=params)
+    }
+  })
+  output$choose_params<-renderUI({
+    if(is.null(pData()))
+      return()
+    params<-sort(unique(pData()$Parameter))
+
+    checkboxGroupInput('params',NULL,
+                       choices = params)
+  })
+
+  #Create matrix picker
+  observe({
+    matrices<-sort(unique(pData()$Matrix))
+    if(input$selectall_Matrix == 0) return(NULL)
+    else if (input$selectall_Matrix%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,inline = FALSE)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,selected=matrices,inline = FALSE)
+    }
+  })
+
+  output$choose_matrix<-renderUI({
+    if(is.null(pData()))
+      return()
+    matrices<-sort(unique(pData()$Matrix))
+
+    checkboxGroupInput('mtrx',NULL,
+                       choices = matrices,
+                       selected = matrices[1],
+                       inline = FALSE)
+  })
+
+  #Create site picker
+  observe({
+    sites<-sort(unique(pData()$Site))
+    if(input$selectall_Sites == 0) return(NULL)
+    else if (input$selectall_Sites%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"sts",NULL,choices=sites,inline = FALSE)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"sts",NULL,choices=sites,selected=sites,inline = FALSE)
+    }
+  })
+
+  output$choose_sites<-renderUI({
+    if(is.null(pData()))
+      return()
+    sites<-sort(unique(pData()$Site))
+
+    checkboxGroupInput('sts',NULL,
+                       choices = sites,
+                       selected = sites[1],
+                       inline = FALSE)
+  })
+  
+  #Create date range input
+  output$choose_dates<-renderUI({
+    if(is.null(pData()))
+      return()
+    # minDate<-min(pData()$Date)
+    # maxDate<-max(pData()$Date)
+    
+    dateRangeInput('dtRng',NULL,
+                   start = baseDates()[1],
+                   end = baseDates()[2],
+                   format = 'dd-M-yyyy'
+                   
+    )
+    
+  })
+  
+  
+  #Data table output-------------------
+  #Output for long format data table
+  
+  output$tblData <- renderDataTable({
+    if(is.null(input$locids))
+      return()
+
+    fData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
+                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                              Parameter %in% input$params, Site %in% input$sts) %>%
+      arrange(Location,Date)
+    fData$Date<-as.character(fData$Date)
+
+    return(unique(fData))
+  })
+  
+  
+}#Server component
 
 
 
