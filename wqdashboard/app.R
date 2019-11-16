@@ -30,16 +30,17 @@ ui <- dashboardPage(
                   
                   ),#Dashboarrd header
   dashboardSidebar(width=400,
-    h3('Pages',style = "margin-left:5px;"),
+    #h3('Pages',style = "margin-left:5px;"),
     sidebarMenu(
-      menuItem("Home", tabName = "home", icon = icon("dashboard")),
+      menuItem("Home", tabName = "home", icon = icon("home")),
       menuItem("Data Import", tabName = "dataimport", icon = icon("th")),
+      menuItem('Water Quality Criteria',tabName='wqc',icon = icon('tint')),
       menuItem('Plots',tabName='plots',icon=icon('chart-bar')),
       menuItem("Tables",tabName = 'tables',icon=icon('file-alt')),
       menuItem("Regression Tools",tabName = 'regression',icon=icon('chart-line')),
       menuItem("Map Tools",tabName = 'maptools',icon=icon('map'))
     ),#Sidebar menu
-    tags$hr(color='white'),
+    tags$hr(color='white',width="95%"),
     h3('Filter Tools',style = "margin-left:5px;"),
     fluidRow(
         column(6,
@@ -92,7 +93,8 @@ ui <- dashboardPage(
       
   ),#dashboardSidebar
   
-  
+  ###########PAGES#############################
+  #############################################
   
   dashboardBody(
     tabItems(
@@ -112,8 +114,9 @@ ui <- dashboardPage(
               ),
               h3('Disclaimer'),
               p('This application is intended for exploratory data analysis. Any statistical tools/tests should be used
-                at the discretion of the user, and the user is responsible for any conclusions or decisoins made as a result
+                at the discretion of the user, and the user is responsible for any conclusions or decisions made as a result
                 of statistical analysis results.'),
+              tags$img(src='testtoooh.jpg'),
               h3('References'),
               tags$ul(
               tags$li('[R base 2019]. R Core Team (2018). R: A language and environment for statistical computing. R Foundation for
@@ -128,7 +131,7 @@ ui <- dashboardPage(
       # Import tab content
       tabItem(tabName = "dataimport",
               
-              column(4,
+              column(6,
                      h2('Data Import Instructions'),
                      p('Upfront text'),
                      box(width=12,
@@ -139,9 +142,12 @@ ui <- dashboardPage(
                      )
               ),#first column,
                        
-              column(8,
+              column(6,
                 h2("Required Data Format"),
-                p('Upfront text'),
+                p('This application is designed to temporarily load the user\'s data file 
+                  into memory for the duration of application use. User data are not 
+                  retained on the server after application use.'),
+                p('The following information describes the required data format.'),
                 
                 tags$ul(
                   
@@ -160,23 +166,44 @@ ui <- dashboardPage(
 
       ),#Import tab
       
+      # Water quality criteria tab
+      tabItem(tabName='wqc',
+              h2('Configure Water Quality Criteria')),#Water quality criteria tab
+      
       # Plotting tab
       tabItem(tabName = 'plots',
         h2('Plotting Tools'),
-        fluidRow(
-          box('Time Series'),
-          box('Boxplots')
+          column(width=12,
+                 
+                 fluidRow(
+                   h4('Time Series',style = "margin-left:10px;"),
+                   box(width=12,collapsible = TRUE,collapsed = TRUE)
+                          ),
+                 fluidRow(
+                   h4('Boxplots',style = "margin-left:10px;"),
+                   box(width=12,collapsible = TRUE,collapsed = TRUE)
+                          
+                          ),
+                 
+                 
+                 fluidRow(
+                   h4('Probability Plots',style = "margin-left:10px;"),
+                   box(width=12,collapsible = TRUE,collapsed = TRUE)
+                          
+                          ),
+                 fluidRow(
+                   h4('Histograms',style = "margin-left:10px;"),
+                   box(width=12,collapsible = TRUE,collapsed = TRUE,
+                     plotOutput("distPlot"),
+                     sliderInput("bins", "Number of Bins:", 1, 50, 30)
+                    )
+                 
+                 )   
+                 
+            )#column
           
-        ),#plots row1
+          
         
-        fluidRow(
-          box('QQ Plots'),
-          box('Histogram',
-              plotOutput("distPlot"),
-              sliderInput("bins", "Number of Bins:", 1, 50, 30)
-              )
-          
-        )#plots row2
         
       ),#Plotting tab
       
