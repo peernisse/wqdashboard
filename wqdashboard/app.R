@@ -1,7 +1,9 @@
 ## app.R ##
 library(shiny)
 library(shinydashboard)
+library(shinyWidgets)
 library(tidyverse)
+library(leaflet)
 source('helpers.R')
 options(scipen = 6)
 
@@ -44,7 +46,7 @@ ui <- dashboardPage(
     h3('Filter Tools',style = "margin-left:5px;"),
     fluidRow(
         column(6,
-               h5(strong('Choose Matrices',style = "margin-left:5px;")),
+               h5(strong('Matrices',style = "margin-left:5px;")),
                actionLink('selectall_Matrix','Select All | Clear All'),
                wellPanel(id='sitePanel',style = "overflow-y:scroll; max-height: 180px; margin-left:5px",
                          uiOutput('choose_matrix',style = "color:black;")
@@ -53,7 +55,7 @@ ui <- dashboardPage(
         ),
         
         column(6,
-               h5(strong('Choose Sites')),
+               h5(strong('Sites')),
                actionLink('selectall_Sites','Select All | Clear All'),
                wellPanel(id='sitePanel',style = "overflow-y:scroll; max-height: 180px; margin-right:5px",
                          uiOutput('choose_sites',style = "color:black;")
@@ -65,7 +67,7 @@ ui <- dashboardPage(
     
     fluidRow(
         column(6,
-               h5(strong("Choose Locations",style = "margin-left:5px;")),
+               h5(strong("Locations",style = "margin-left:5px;")),
                actionLink("selectall_Locs","Select All | Clear All"),
                
                wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 180px;margin-left:5px",
@@ -75,7 +77,7 @@ ui <- dashboardPage(
                
         ),
         column(6,
-               h5(strong("Choose Parameters")),
+               h5(strong("Parameters")),
                actionLink('selectall_Params','Select All | Clear All'),
                wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 180px;margin-right:5px",
                          uiOutput('choose_params',style = "color:black;")
@@ -85,7 +87,7 @@ ui <- dashboardPage(
         )
     ),#fluid row
     
-    h5(strong("Choose Date Range",style = "margin-left:5px")),
+    h5(strong("Date Range",style = "margin-left:5px")),
     fluidRow(
       column(8,uiOutput('choose_dates')),
       column(1,uiOutput('reset_dates'))
@@ -101,6 +103,7 @@ ui <- dashboardPage(
       # Home tab content
       tabItem(tabName = "home",
               h2('Water Quality Explorer'),
+              tags$img(src='testtoooh.jpg'),
               p('This application is a generic environemntal data analysis tool. It is designed for use with censored and/or uncensored water, groundwater,
                 soil, and air data.'),
               p('A focus of the application is comparison of environmental data to local or federal regulatory standards, either point by ponit, or in a statistical manner (e.g., confidence intervals, control charts).'),
@@ -116,7 +119,7 @@ ui <- dashboardPage(
               p('This application is intended for exploratory data analysis. Any statistical tools/tests should be used
                 at the discretion of the user, and the user is responsible for any conclusions or decisions made as a result
                 of statistical analysis results.'),
-              tags$img(src='testtoooh.jpg'),
+              
               h3('References'),
               tags$ul(
               tags$li('[R base 2019]. R Core Team (2018). R: A language and environment for statistical computing. R Foundation for
@@ -177,8 +180,23 @@ ui <- dashboardPage(
                  
                  fluidRow(
                    h4('Time Series',style = "margin-left:10px;"),
-                   box(width=12,collapsible = TRUE,collapsed = TRUE)
-                          ),
+                   box(width=12,collapsible = TRUE,collapsed = TRUE,
+                       
+                       h4('Swap Faceting Variables'),
+                       uiOutput('tsFacetSwap'),
+                       hr(),
+                       h4('Click Plot Points for More Info'),
+                       dataTableOutput("plot_clickinfo"),
+                       plotOutput("timeSeriesPlot",click = 'tsClick'),
+                       hr()
+                       
+                       
+                       
+                       )#box ts
+                          
+                 ),#fluid row,
+                 
+                 
                  fluidRow(
                    h4('Boxplots',style = "margin-left:10px;"),
                    box(width=12,collapsible = TRUE,collapsed = TRUE)
@@ -221,7 +239,35 @@ ui <- dashboardPage(
      
       #Map tab
       tabItem(tabName = 'maptools',
-              h2('Map Tools')
+              h2('Map Explore'),
+              fluidRow(
+                column(width = 2,
+                       h3('Map Tools')
+                       ),#column1
+                
+                column(width=10,
+                       h3('Site Map'),
+                        
+                       leafletOutput(
+                         'map'
+                       ),
+                       
+                       fluidRow(tags$button('Satellite',style='margin-top:10px; margin-left:10px;'),
+                                tags$button('Roads',style='margin-top:4px;')
+                                )#fluidRow
+
+                       )#column2
+                
+              ),#fluidRow
+              
+              tags$hr(style='border-color:black;'),
+              h2('References'),
+              tags$ul(
+                tags$li('[Mapping with `leaflet`]. Joe Cheng, Bhaskar Karambelkar and Yihui Xie (2019). leaflet: Create Interactive Web Maps with the JavaScript
+                        `Leaflet` Library. R package version 2.0.3. https://CRAN.R-project.org/package=leaflet')
+              )
+              
+              
               
       )#Map tab
       
@@ -323,8 +369,11 @@ server <- function(input, output,session) {
         
         detect_flag == 'N' ~ 0.5*(reporting_detection_limit)
         
-      )
-        )
+      ),
+      LATITUDE=as.numeric(LATITUDE),
+      LONGITUDE=as.numeric(LONGITUDE)
+        
+    )#mutate
 
     
    return(tbl)
@@ -373,6 +422,15 @@ server <- function(input, output,session) {
   # })#output tblData
   
   
+  #Dropdowns-------------------
+  #Swap plot faceting variable picklist
+  output$tsFacetSwap<-renderUI({
+    pickerInput('tsSwap',choices = c('Parameter','Location'),
+                selected='Parameter') 
+    
+  })
+  
+  
   #Buttons-------------------------------------------------
   #Date range refresh button action
   observeEvent(input$clrDates,{
@@ -390,6 +448,39 @@ server <- function(input, output,session) {
                   border-color: #2e6da4;font-size:90%; width:35px; 
                  height:30px;margin-top:10px; ")
   })
+  
+  #Map dataframe------------------------------
+  
+  output$map <- renderLeaflet({
+    if(is.null(pData()))
+      return()
+    
+    maplocs<-pData() %>% select(Location,LATITUDE,LONGITUDE) %>% filter(Location %in% input$locids) %>% unique(.)
+    #mCenter<- c(mean(maplocs$LATITUDE),mean(maplocs$LONGITUDE))
+    mBounds<-c(max(maplocs$LONGITUDE),min(maplocs$LONGITUDE),max(maplocs$LATITUDE),min(maplocs$LATITUDE))
+    
+    m <- leaflet() %>% 
+      # addTiles() %>% 
+      addProviderTiles('Esri.WorldImagery') %>% 
+      addProviderTiles("CartoDB.PositronOnlyLabels") %>% 
+      #setView(mCenter[2], mCenter[1],zoom = 1) %>% 
+      setMaxBounds(mBounds[2],mBounds[4],mBounds[1],mBounds[3]) %>% 
+      addCircles(data=maplocs,lng = ~LONGITUDE,lat = ~LATITUDE,label = ~Location, labelOptions = c(permanent = TRUE),
+                       radius = 8, stroke = FALSE,fillOpacity = 0.8,  fillColor='#ed7000') %>%  
+      addScaleBar(position='bottomright') %>% 
+      addMeasure(
+        position = "topright",
+        primaryLengthUnit = "feet",
+        primaryAreaUnit = "acres",
+        activeColor = "#3D535D",
+        completedColor = "#7D4479",
+        localization = "en"
+      )#add measure
+    
+    return(m)
+    
+  })
+  
   
   
   #Pickers----------------------------------------------------
@@ -541,6 +632,68 @@ server <- function(input, output,session) {
     return(unique(fData))
   })
   
+  
+  #Plots---------------------------
+  #Timeseries plots------
+  output$timeSeriesPlot <- renderPlot({
+    if(is.null(input$locids))
+      return()
+    
+    if(input$tsSwap=='Parameter'){
+      tsFacet<-'Parameter'
+      col<- 'Location'
+      
+    }
+    if(input$tsSwap=='Location'){
+      tsFacet<-'Location'
+      col<- 'Parameter'
+      
+    }
+    
+    
+    tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                 Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                 Parameter %in% input$params,
+                                 Matrix %in% input$mtrx))
+    #tsp<-tsPlot(tsData,tsFacet,col)
+    
+    #return(tsp)
+    
+    #testing ggplot login inside this instead of function
+    ggplot(tsData,aes(x=Date,y=RESULT_ND))+
+      geom_line(aes_string(colour=col),size=0.5)+
+      geom_point(aes_string(colour=col),size=3)+
+      geom_point(aes(x=Date,y=NDS,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
+      scale_fill_manual(values='white')+
+      facet_wrap(as.formula(paste('~',tsFacet)),scales="free")+
+      theme(legend.position = "bottom", legend.title = element_blank())+
+      theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
+      labs(x="Date",y="Value",title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")+
+      theme(plot.title = element_text(face='bold',size=14))
+    
+    
+    
+  })#renderPlot
+  
+  tsData2<-reactive({
+    filter(pData(),Location %in% input$locids,
+           Date >= input$dtRng[1] & Date<=input$dtRng[2],
+           Parameter %in% input$params,
+           Matrix %in% input$mtrx) %>% 
+      select(Site,Location,Date,Matrix,Parameter,detect_flag,RESULT_ND,reporting_detection_limit,MDL)
+  })
+  
+  #Time series info boxes
+  output$plot_clickinfo <- renderDataTable({
+    
+    #nearPoints(pData(), input$tsClick,threshold = 10)
+    
+    res <- nearPoints(tsData2(), input$tsClick,threshold = 3,maxpoints = 1)
+    
+    if (nrow(res) == 0)
+      return()
+    res
+  })
   
 }#Server component
 
