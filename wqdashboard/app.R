@@ -177,14 +177,15 @@ ui <- dashboardPage(
       tabItem(tabName = 'plots',
         h2('Plotting Tools'),
           column(width=12,
+                 h4('Swap Faceting Variables'),
                  
                  fluidRow(
-                   h4('Time Series',style = "margin-left:10px;"),
-                   box(width=12,collapsible = TRUE,collapsed = TRUE,
+                  
+                   uiOutput('tsFacetSwap'),
+                   hr(),
+                   box(title='Time Series',width=12,collapsible = TRUE,collapsed = TRUE,
                        
-                       h4('Swap Faceting Variables'),
-                       uiOutput('tsFacetSwap'),
-                       hr(),
+                       
                        h4('Click Plot Points for More Info'),
                        dataTableOutput("plot_clickinfo"),
                        plotOutput("timeSeriesPlot",click = 'tsClick'),
@@ -198,25 +199,34 @@ ui <- dashboardPage(
                  
                  
                  fluidRow(
-                   h4('Boxplots',style = "margin-left:10px;"),
-                   box(width=12,collapsible = TRUE,collapsed = TRUE)
+                   
+                   box(title='Boxplots',width=12,collapsible = TRUE,collapsed = TRUE,
+                       h4('Click Plot Boxes for More Info'),
+                       dataTableOutput("bplot_clickinfo"),
+                       plotOutput("boxPlot",click = 'bxClick')
+                       )#box
                           
-                          ),
+                  ),#fluid row,
                  
                  
                  fluidRow(
-                   h4('Probability Plots',style = "margin-left:10px;"),
-                   box(width=12,collapsible = TRUE,collapsed = TRUE)
+                   
+                   box(title='Probability Plots',width=12,collapsible = TRUE,collapsed = TRUE,
+                       
+                       plotOutput("qPlot")
+                       
+                       
+                       )#box
                           
-                          ),
-                 fluidRow(
-                   h4('Histograms',style = "margin-left:10px;"),
-                   box(width=12,collapsible = TRUE,collapsed = TRUE,
-                     plotOutput("distPlot"),
-                     sliderInput("bins", "Number of Bins:", 1, 50, 30)
-                    )
+                  ),#fluid row
                  
-                 )   
+                 fluidRow(
+                   
+                   box(title='Histograms',width=12,collapsible = TRUE,collapsed = TRUE,
+                       plotOutput("hPlot")
+                    )#box
+                 
+                  )#fluid row
                  
             )#column
           
@@ -227,13 +237,69 @@ ui <- dashboardPage(
       
       #Tables tab
       tabItem(tabName = 'tables',
-              h2('Table Tools'),
-              dataTableOutput('tblData')
+              box(title="Filtered Data Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
+                  overflow-y: scroll;",
+                  
+                  dataTableOutput('tblData')
+                  
+                  
+                  ),#box,
+              
+              box(title="Wide Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
+                  overflow-y: scroll;",
+                  
+                  h3('Pending')
+                  
+                  
+              )
+              
+              
               ),#Tables tab
       
       #Regression tab
       tabItem(tabName = 'regression',
-              h2('Regression Tools')
+              
+              box(title='Regression Tools',width=12,collapsible = TRUE,collapsed = FALSE,style="padding:35px;",
+                  
+                  fluidRow(
+                    
+                    p('This tool allows for linear regression of 
+                      selected variables. Select the independent (x)
+                      variable and the dependent (y) variable. Deselect points using clicking or drag selection, and the "Toggle Points" button.')
+                    ),
+                  fluidRow(
+                    
+                    column(3,h3("X Axis Variable"),uiOutput('regX')),
+                    column(3,h3('Y Axis Variable'),uiOutput('regY'))
+                  ),
+                  fluidRow(
+                    
+                    plotOutput('rPlot',
+                               click = "rPlot_click",
+                               
+                               brush = brushOpts(
+                                 id = "rPlot_brush"
+                                 
+                               ),#brushopts
+                               
+                    )#plotoutput
+                  ),#fluid row
+                  
+                  fluidRow(
+                    actionButton("exclude_toggle", "Toggle points",style="margin-left:8px;"),
+                    actionButton("exclude_reset", "Reset")     
+                    
+                  ),
+                  
+                  fluidRow(
+                    h3('Model Statistics'),
+                    tableOutput('rTbl')
+                    
+                  )
+                  
+                  
+                  )#box
+              
               
       ),#Regression tab
      
@@ -359,6 +425,7 @@ server <- function(input, output,session) {
         TRUE ~ result_text
         
       ),
+      
       RESULT_ND = case_when(
         
         detect_flag== 'Y' ~ RESULT,
@@ -468,6 +535,7 @@ server <- function(input, output,session) {
       addCircles(data=maplocs,lng = ~LONGITUDE,lat = ~LATITUDE,label = ~Location, labelOptions = c(permanent = TRUE),
                        radius = 8, stroke = FALSE,fillOpacity = 0.8,  fillColor='#ed7000') %>%  
       addScaleBar(position='bottomright') %>% 
+      addLayersControl() %>% 
       addMeasure(
         position = "topright",
         primaryLengthUnit = "feet",
@@ -615,6 +683,42 @@ server <- function(input, output,session) {
     
   })
   
+  #Create regression tool parameter picker-----
+  observe({
+    
+    #if(is.null(input$params)) return(NULL)
+    
+    #if (input$selectall_Params == 0) return(NULL)
+    
+    if (input$selectall_Params%%2 == 0)
+    {
+      updatePickerInput(session,'regrX',choices='')
+      updatePickerInput(session,'regrY',choices='')
+    }
+    
+    else if(input$selectall_Params%%2 == 1)
+    {
+      updatePickerInput(session,'regrX',choices=c('Date',input$params),
+                        selected='Date')
+      updatePickerInput(session,'regrY',choices=input$params)
+    } 
+    
+    
+    
+  })
+  
+  
+  
+  output$regX<-renderUI({
+    pickerInput('regrX',choices=c('Date',input$params))
+    
+  })
+  
+  output$regY<-renderUI({
+    pickerInput('regrY',choices=input$params)
+    
+  })
+  
   
   #Data table output-------------------
   #Output for long format data table
@@ -634,6 +738,7 @@ server <- function(input, output,session) {
   
   
   #Plots---------------------------
+  
   #Timeseries plots------
   output$timeSeriesPlot <- renderPlot({
     if(is.null(input$locids))
@@ -693,6 +798,279 @@ server <- function(input, output,session) {
     if (nrow(res) == 0)
       return()
     res
+  })
+  
+  
+  #Boxplots------------
+  
+  output$boxPlot <- renderPlot({
+    if(is.null(input$locids))
+      return()
+    
+    if(input$tsSwap=='Parameter'){
+      bxFacet<-'Parameter'
+      bxCol<- 'Location'
+      
+    }
+    if(input$tsSwap=='Location'){
+      bxFacet<-'Location'
+      bxCol<- 'Parameter'
+      
+    }
+    
+    
+    
+    
+    bxData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                 Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                 Parameter %in% input$params,
+                                 Matrix %in% input$mtrx))
+    # bxp<-bxPlot(bxData)
+    # return(bxp)
+    
+    ggplot(bxData,aes(x=Location,y=RESULT_ND))+
+      geom_boxplot(aes_string(fill=bxCol))+
+      #geom_jitter(color="black")+
+      #geom_jitter(aes(x=Location,y=NonDetect),color="white")+
+      facet_wrap(as.formula(paste('~',bxFacet)), scales="free")+
+      theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
+      theme(legend.position = "bottom", legend.title = element_blank())+
+      labs(x="Location",y="Value",title="Boxplots Non-Detects at 1/2 the Reporting Limit")+
+      theme(plot.title = element_text(face='bold',size=14))
+    
+    
+  })
+  
+  bxData2<-reactive({pData() %>% filter(Location %in% input$locids,
+                                        Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                        Parameter %in% input$params,
+                                        Matrix %in% input$mtrx) %>% 
+      group_by(Location,Parameter) %>% 
+      summarize(
+        
+        `Percent Non-Detect`=round(perND(detect_flag,'N'),0),
+        `Minimum Date`=min(Date),
+        `Maximum Date`=max(Date),
+        Minimum=as.character(ifelse(min(RESULT_ND)==0,'ND',min(RESULT_ND))),
+        `First Quartile`=as.character(ifelse(quantile(RESULT_ND,0.25)==0,'ND',quantile(RESULT_ND,0.25))),
+        Mean=mean(RESULT_ND),
+        Median=median(RESULT_ND),
+        `Third Quartile`=as.character(ifelse(quantile(RESULT_ND,0.75)==0,'ND',quantile(RESULT_ND,0.75))),
+        Maximum=max(RESULT_ND),
+        Value = mean(RESULT_ND)   
+      ) %>% as.data.frame(.)
+  })
+  
+  print(bxData2)
+  
+  #Boxplot info box table
+  output$bplot_clickinfo <- renderDataTable({
+    
+    #nearPoints(pData(), input$tsClick,threshold = 10)
+    
+    bres <- nearPoints(bxData2(), input$bxClick,threshold = 50,maxpoints = 1)
+    
+    if (nrow(bres) == 0)
+      return()
+    bres
+  })
+  
+  
+  #Probablity plots---------------------------------
+  output$qPlot <- renderPlot({
+    if(is.null(input$locids))
+      return()
+    
+    if(input$tsSwap=='Parameter'){
+      qqFacet<-'Parameter'
+      qqCol<- 'Location'
+      
+    }
+    if(input$tsSwap=='Location'){
+      qqFacet<-'Location'
+      qqCol<- 'Parameter'
+      
+    }
+    
+    
+    
+    qData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                Parameter %in% input$params,
+                                Matrix %in% input$mtrx))
+    
+    ggplot(qData,aes(sample=as.numeric(RESULT_ND)))+
+      geom_qq(aes_string(color=qqCol))+
+      facet_wrap(as.formula(paste('~',qqFacet)), scales="free")+
+      theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
+      theme(legend.position = "bottom", legend.title = element_blank())+
+      labs(x="Theoretical Distribution(normal)",y="Value",title="Distribution (quantile plot) Non-Detects at 1/2 the Reporting Limit")+
+      theme(plot.title = element_text(face='bold',size=14))
+  })
+  
+  #Histograms-----------------------------------------------
+  output$hPlot <- renderPlot({
+    if(is.null(input$locids))
+      return()
+    
+    if(input$tsSwap=='Parameter'){
+      hFacet<-'Parameter'
+      hCol<- 'Location'
+      
+    }
+    if(input$tsSwap=='Location'){
+      hFacet<-'Location'
+      hCol<- 'Parameter'
+      
+    }
+    
+    hData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                Parameter %in% input$params,
+                                Matrix %in% input$mtrx))
+    
+    ggplot(hData,aes(x=RESULT_ND))+
+      geom_histogram(aes_string(fill=hCol),alpha=0.5)+
+      facet_wrap(as.formula(paste('~',hFacet)), scales="free")+
+      theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
+      theme(legend.position = "bottom", legend.title = element_blank())+
+      labs(x="Value Bins=30",y="Count",title="Distribution (histogram) Non-Detects at Zero")+
+      theme(plot.title = element_text(face='bold',size=14))
+  })
+  
+  #Regression plot reactive dataframe setup------------------------
+  
+  pdata<-reactive({
+    
+    rData<-pData() %>%
+      filter(Location %in% input$locids,
+             Date >= input$dtRng[1] & Date<=input$dtRng[2],
+             Parameter %in% input$params,
+             Matrix %in% input$mtrx) %>%
+      select(Location,Date,Parameter,RESULT_ND) %>%
+      arrange(Location,Parameter,Date) %>%
+      as.data.frame(.)
+    
+    if(input$regrX=='Date'){
+      rX<-rData %>% 
+        filter(Parameter == input$regrY) %>% 
+        arrange(as.Date(Date)) %>% 
+        pull(Date)
+      
+      rY<- rData %>% filter(Parameter == input$regrY) %>% 
+        arrange(Date) %>% 
+        pull(RESULT_ND)
+      
+      pdata<-data.frame(rX=rX,rY=rY)
+      
+      #xLab<-'Date'
+      #yLab<-unique(input$regrY)
+      
+    } else
+      
+      if(input$regrX!='Date'){
+        
+        setup<-rData %>% 
+          filter(Parameter %in% c(input$regrY,input$regrX)) %>% 
+          select(Location,Date,Parameter,RESULT_ND)
+        
+        setup$Parameter<-factor(setup$Parameter,levels=c(input$regrY,input$regrX))
+        
+        pdata<-data.table::dcast(setup,Location+Date~Parameter,value.var='RESULT_ND',fun.aggregate=mean)
+        
+        pdata<-pdata %>% mutate(chk=complete.cases(.)) %>% filter(chk!=FALSE)
+        
+        names(pdata)<-c('Location','Date','rY','rX','CHECK')
+        
+        
+      }
+    
+    return(pdata)
+    
+  })
+  
+  
+  # For storing which rows have been excluded
+  vals <- reactive({
+    reactiveValues(
+      keeprows = rep(TRUE, nrow(pdata()))
+    )  
+  })
+  
+  
+  #Make the plot and output it
+  output$rPlot<-renderPlot({
+    if(is.null(input$regrX)) return()
+    
+    #Get axis values
+    xLab<-unique(input$regrX)
+    yLab<-unique(input$regrY)
+    locs<-input$locids 
+    locs<-paste(locs,collapse=', ')
+    print(locs)
+    
+    # Plot the kept and excluded points as two separate data sets
+    keep    <- pdata()[ vals()$keeprows, , drop = FALSE]
+    exclude <- pdata()[!vals()$keeprows, , drop = FALSE]
+    
+    g<-ggplot(keep,aes(x=rX,y=rY))+
+      geom_smooth(method='lm')+
+      geom_point(size=2.5)+
+      geom_point(data=exclude,size=2.5,shape = 21, fill = NA, color = "black", alpha = 0.25)+
+      labs(x=xLab,y=yLab,title=paste('Regression of',yLab,'vs',xLab,'\nFor Location(s)',locs))
+    
+    g
+    
+  })
+  #
+  #
+  # Toggle points that are clicked
+  
+  observeEvent(input$rPlot_click, {
+    vals<-vals()
+    
+    res <- nearPoints(pdata(), input$rPlot_click, allRows = TRUE)
+    
+    vals$keeprows <- xor(vals$keeprows, res$selected_)
+  })
+  
+  # Toggle points that are brushed, when button is clicked
+  observeEvent(input$exclude_toggle, {
+    vals<-vals()
+    
+    res <- brushedPoints(pdata(), input$rPlot_brush, allRows = TRUE)
+    
+    vals$keeprows <- xor(vals$keeprows, res$selected_)
+  })
+  
+  # # Reset all points
+  observeEvent(input$exclude_reset, {
+    
+    vals<-vals()
+    
+    vals$keeprows <- rep(TRUE, nrow(pdata()))
+  })
+  
+  
+  
+  #Regression model output-------------------
+  
+  
+  output$rTbl<-renderTable({
+    pdata<-pdata()
+    vals<-vals()
+    
+    # res <- brushedPoints(pdata(), input$rPlot_brush, allRows = TRUE)
+    # 
+    # vals$keeprows <- xor(vals$keeprows, res$selected_)
+    
+    mdata   <- pdata()[ vals$keeprows, , drop = FALSE]
+    
+    mdl<-lm(rY~rX,data=mdata)
+    
+    mdlstats<-broom::glance(mdl)
+    mdlstats
+    
   })
   
 }#Server component
