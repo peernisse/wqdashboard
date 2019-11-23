@@ -102,10 +102,19 @@ ui <- dashboardPage(
     tabItems(
       # Home tab content
       tabItem(tabName = "home",
-              h2('Water Quality Explorer'),
-              tags$img(src='testtoooh.jpg'),
-              p('This application is a generic environemntal data analysis tool. It is designed for use with censored and/or uncensored water, groundwater,
-                soil, and air data.'),
+              
+              fluidRow(
+                column(width=6,h2('Water Quality Explorer')
+                       ),#column
+                
+                column(width=6,tags$img(src='testtoooh.jpg')
+                )#column
+                
+              ),#fluid row
+              
+              
+              p('This application is a generic environmental data analysis tool. It is designed for use with censored and/or uncensored water, groundwater,
+                soil, and air data.',style="margin-top:20px;"),
               p('A focus of the application is comparison of environmental data to local or federal regulatory standards, either point by ponit, or in a statistical manner (e.g., confidence intervals, control charts).'),
               h3('Overview'),
               tags$ul(
@@ -901,6 +910,7 @@ server <- function(input, output,session) {
     
     ggplot(qData,aes(sample=as.numeric(RESULT_ND)))+
       geom_qq(aes_string(color=qqCol))+
+      geom_qq_line(aes_string(color=qqCol))+
       facet_wrap(as.formula(paste('~',qqFacet)), scales="free")+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
@@ -934,7 +944,7 @@ server <- function(input, output,session) {
       facet_wrap(as.formula(paste('~',hFacet)), scales="free")+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
-      labs(x="Value Bins=30",y="Count",title="Distribution (histogram) Non-Detects at Zero")+
+      labs(x="Value Bins=30",y="Count",title="Distribution (histogram) Non-Detects at 1/2 the Reporting Limit")+
       theme(plot.title = element_text(face='bold',size=14))
   })
   
@@ -1014,10 +1024,12 @@ server <- function(input, output,session) {
     exclude <- pdata()[!vals()$keeprows, , drop = FALSE]
     
     g<-ggplot(keep,aes(x=rX,y=rY))+
-      geom_smooth(method='lm')+
+      geom_smooth(method='lm',aes(fill="Best-fit line and 95% Confidence Band"))+
       geom_point(size=2.5)+
       geom_point(data=exclude,size=2.5,shape = 21, fill = NA, color = "black", alpha = 0.25)+
-      labs(x=xLab,y=yLab,title=paste('Regression of',yLab,'vs',xLab,'\nFor Location(s)',locs))
+      labs(x=xLab,y=yLab,title=paste('Regression of',yLab,'vs',xLab,'\nFor Location(s)',locs))+
+      theme(legend.position = 'bottom',legend.title = element_blank())+
+      scale_fill_manual(values=c('grey'))
     
     g
     
