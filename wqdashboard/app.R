@@ -40,6 +40,7 @@ ui <- dashboardPage(
       menuItem('Plots',tabName='plots',icon=icon('chart-bar')),
       menuItem("Tables",tabName = 'tables',icon=icon('file-alt')),
       menuItem("Regression Tools",tabName = 'regression',icon=icon('chart-line')),
+      menuItem("Statistical Tests",tabName = 'statstests',icon=icon('calculator')),
       menuItem("Map Tools",tabName = 'maptools',icon=icon('map'))
     ),#Sidebar menu
     tags$hr(color='white',width="95%"),
@@ -100,8 +101,10 @@ ui <- dashboardPage(
   
   dashboardBody(
     tabItems(
-      # Home tab content
+      # Home tab content----------------
       tabItem(tabName = "home",
+
+              
               
               fluidRow(
                 column(width=6,h2('Water Quality Explorer')
@@ -115,7 +118,10 @@ ui <- dashboardPage(
               
               p('This application is a generic environmental data analysis tool. It is designed for use with censored and/or uncensored water, groundwater,
                 soil, and air data.',style="margin-top:20px;"),
+
               p('A focus of the application is comparison of environmental data to local or federal regulatory standards, either point by ponit, or in a statistical manner (e.g., confidence intervals, control charts).'),
+              
+              
               h3('Overview'),
               tags$ul(
                 tags$li('Import data from CSV'),
@@ -124,6 +130,13 @@ ui <- dashboardPage(
                 tags$li('Regression analysis tools'),
                 tags$li('Mapping data locations')
               ),
+              
+              h3("Try the App"),
+              p('Load the demo data, select some locations and parameters from the left menu.'),
+              tags$em('Use Demo Data'),
+              actionButton(inputId = 'demoLoad',label = 'Load Demo Data'),
+              
+              
               h3('Disclaimer'),
               p('This application is intended for exploratory data analysis. Any statistical tools/tests should be used
                 at the discretion of the user, and the user is responsible for any conclusions or decisions made as a result
@@ -140,7 +153,7 @@ ui <- dashboardPage(
       
       ),#Home tab
       
-      # Import tab content
+      # Import tab content------------------
       tabItem(tabName = "dataimport",
               
               column(6,
@@ -178,11 +191,11 @@ ui <- dashboardPage(
 
       ),#Import tab
       
-      # Water quality criteria tab
+      # Water quality criteria tab-------------------
       tabItem(tabName='wqc',
               h2('Configure Water Quality Criteria')),#Water quality criteria tab
       
-      # Plotting tab
+      # Plotting tab---------------------
       tabItem(tabName = 'plots',
         h2('Plotting Tools'),
           column(width=12,
@@ -244,7 +257,7 @@ ui <- dashboardPage(
         
       ),#Plotting tab
       
-      #Tables tab
+      #Tables tab----------------------
       tabItem(tabName = 'tables',
               box(title="Filtered Data Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
                   overflow-y: scroll;",
@@ -265,7 +278,7 @@ ui <- dashboardPage(
               
               ),#Tables tab
       
-      #Regression tab
+      #Regression tab-------------------
       tabItem(tabName = 'regression',
               
               box(title='Regression Tools',width=12,collapsible = TRUE,collapsed = FALSE,style="padding:35px;",
@@ -289,7 +302,7 @@ ui <- dashboardPage(
                                brush = brushOpts(
                                  id = "rPlot_brush"
                                  
-                               ),#brushopts
+                               )#brushopts
                                
                     )#plotoutput
                   ),#fluid row
@@ -312,7 +325,18 @@ ui <- dashboardPage(
               
       ),#Regression tab
      
-      #Map tab
+      
+      #Stats tab------------------
+      tabItem(
+        tabName = 'statstests',
+          h2('Statistical Analyses'),
+        p("Pending...")
+        
+        
+        
+      ),#stats tab
+      
+      #Map tab------------------------
       tabItem(tabName = 'maptools',
               h2('Map Explore'),
               fluidRow(
