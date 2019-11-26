@@ -104,10 +104,7 @@ ui <- dashboardPage(
       # Home tab content----------------
       tabItem(tabName = "home",
 
-              h2('Water Quality Explorer'),
-              tags$img(src='testtoooh.jpg'),
-              p('This application is a generic environmental data analysis tool. It is designed for use with censored and/or uncensored water, groundwater,
-                soil, and air data.'),
+              
               
               fluidRow(
                 column(width=6,h2('Water Quality Explorer')
