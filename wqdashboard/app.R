@@ -45,6 +45,12 @@ ui <- dashboardPage(
     ),#Sidebar menu
     tags$hr(color='white',width="95%"),
     h3('Filter Tools',style = "margin-left:5px;"),
+    h5(strong("Date Range",style = "margin-left:5px")),
+    fluidRow(
+      column(8,uiOutput('choose_dates')),
+      column(1,uiOutput('reset_dates'))
+    ),
+    
     fluidRow(
         column(6,
                h5(strong('Matrices',style = "margin-left:5px;")),
@@ -86,13 +92,9 @@ ui <- dashboardPage(
                )
                
         )
-    ),#fluid row
+    )#fluid row
     
-    h5(strong("Date Range",style = "margin-left:5px")),
-    fluidRow(
-      column(8,uiOutput('choose_dates')),
-      column(1,uiOutput('reset_dates'))
-    )
+    
       
   ),#dashboardSidebar
   
