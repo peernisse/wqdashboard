@@ -5,8 +5,8 @@ account: peernisse
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 1339775
-bundleId: 2610977
+bundleId: 2611189
 url: https://peernisse.shinyapps.io/wqdashboard/
-when: 1574464883.6018
+when: 1574473068.59412
 asMultiple: FALSE
 asStatic: FALSE
