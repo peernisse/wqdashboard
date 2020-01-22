@@ -163,9 +163,9 @@ ui <- dashboardPage(
                      p('Upfront text'),
                      box(width=12,
                        h2('Data Import'),
-                       fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
-                       tags$em('Use Demo Data'),
-                       actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+                       #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                       tags$em('Or Use Demo Data Button on Home Tab')
+                       #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
                      )
               ),#first column,
                        
@@ -331,12 +331,31 @@ ui <- dashboardPage(
       #Stats tab------------------
       tabItem(
         tabName = 'statstests',
-          h2('Statistical Analyses'),
-        p("Pending...")
+        fluidRow(
+          
+          column(6, h3('Select Stats to Show'),
+                 actionLink('selectall_Stats','Select All | Clear All'),
+                 uiOutput('choose_stats')),
+          column(6,h3('Output this Table to CSV'),
+                 fluidRow(
+                   column(6,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
+                   column(1,h4('.csv'),style='padding-left: 0px;'),
+                   column(2,downloadButton('expStats','Download'))
+                   
+                 )
+          )
+        ),
+        
+        hr(),
+        
+        dataTableOutput('statsData')
         
         
         
       ),#stats tab
+      
+      
+      
       
       #Map tab------------------------
       tabItem(tabName = 'maptools',
@@ -550,6 +569,87 @@ server <- function(input, output,session) {
                   border-color: #2e6da4;font-size:90%; width:35px; 
                  height:30px;margin-top:10px; ")
   })
+  
+  
+  
+  #Stats tab items--------------------------------
+  #Create stats table column picker-----------------
+  observe({
+    
+    if(input$selectall_Stats == 0) return(NULL) 
+    else if (input$selectall_Stats%%2 == 0)
+    {
+      updateCheckboxGroupInput(session,"stats",NULL,choices=statList,inline = TRUE)
+    }
+    else
+    {
+      updateCheckboxGroupInput(session,"stats",NULL,choices=statList,selected=statList,inline = TRUE)
+    }
+  })
+  output$choose_stats<-renderUI({
+    if(is.null(pData()))
+      return()
+    
+    #statList<-names(statSumm())
+    #statList<-statList[-c(1:3)]
+    
+    checkboxGroupInput('stats',NULL,
+                       choices = statList,
+                       selected = statList,
+                       inline = TRUE)
+    
+  })
+  
+  
+  
+  #Stats summary data table---------------------------
+  output$statsData <- renderDataTable({
+    if(is.null(input$locids)|is.null(input$stats))
+      return()
+    #sData <- statSumm() %>% select(input$stats)
+    sData <- statSumm()
+    return(sData)
+  })
+  
+  statSumm <- reactive({
+    
+    pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
+                       Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                       Parameter %in% input$params) %>% 
+      group_by(Matrix, Parameter,Location) %>% 
+      summarise(`Number of Observations`=length(Value),
+                `Percent Non-Detect`=round(perND(DetectionFlag,'ND'),0),
+                `Minimum Date`=min(Date),
+                `Maximum Date`=max(Date),
+                Minimum=as.character(ifelse(min(Value)==0,'ND',min(Value))),
+                Maximum=max(Value),
+                `First Quartile`=as.character(ifelse(quantile(Value,0.25)==0,'ND',quantile(Value,0.25))),
+                `Third Quartile`=as.character(ifelse(quantile(Value,0.75)==0,'ND',quantile(Value,0.75))),
+                Average=mean(Value),
+                `Standard Deviation`=sd(Value),
+                Variance=var(Value)) %>% 
+      select(1:3,input$stats)
+    
+  })
+  
+  
+  
+  #Export stats summary table download button------------------
+  #Output handler
+  output$expStats <- downloadHandler(
+    
+    filename = function() {
+      paste(input$expStatsFilename, ".csv", sep = "")
+    },
+    
+    content = function(file) {
+      write.csv(statSumm(), file, row.names = FALSE)
+    }
+  )#downloadhandler
+  
+  
+  
+  
   
   #Map dataframe------------------------------
   
