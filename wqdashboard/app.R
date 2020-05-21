@@ -163,7 +163,7 @@ ui <- dashboardPage(
                      p('Upfront text'),
                      box(width=12,
                        h2('Data Import'),
-                       #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                       fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
                        tags$em('Or Use Demo Data Button on Home Tab')
                        #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
                      )
