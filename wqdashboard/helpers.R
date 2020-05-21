@@ -1,7 +1,83 @@
 #This script holds helper functions for the wqdashboard R shiny app
 
+#Make column names dataframe
 
+fields<-data.frame(
+  FIELD_NAME = c(
+    'SITE',
+    'LOCATION',
+    'MATRIX',
+    'DATE',
+    'TIME',
+    'PARAMETER',
+    'FRACTION',
+    'RESULT',
+    'UNITS',
+    'DETECT_FLAG',
+    'REPORTING_LIMIT',
+    'MDL',
+    'LATITUDE',
+    'LONGITUDE'
+    
+  ),
+  REQUIRED = c(
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'N',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'N',
+    'N'
+    
+  ),
+  DATA_TYPE =c(
+    'Text',
+    'Text',
+    'Text',
+    'Date',
+    'Text',
+    'Text',
+    'Text',
+    'Numeric',
+    'Text',
+    'Text',
+    'Numeric',
+    'Numeric',
+    'Numeric',
+    'Numeric'
+    
+  ),
+  DESCRIPTION=c(
+    'A grouping for locations such as "Background", "Exposure"',
+    'Sample location names',
+    'Sample matrix such as "Groundwater", "Air", etc.',
+    'Date in mm/dd/yyyy format',
+    'text time in HH:MM format',
+    'Parameter name such as "Aluminum", "Depth to Water"',
+    'Analytical sample fraction such as "Total", "Dissolved"',
+    'Value of sample result. Non detect results entered as blank.',
+    'Units of sample result',
+    'Binary "Y" for detections or "N" for non-detections',
+    'Sample result reporting limit',
+    'Sample result method detection limit',
+    'Lattitude in decimal degreees',
+    'Longitude in decimal degreees'
+    
+    
+  ),
+  stringsAsFactors = FALSE
+  
+  
+)
 
+#Fix up differnt spelled units
 fixUnits<-function(df){
   
   

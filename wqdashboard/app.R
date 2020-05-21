@@ -158,35 +158,57 @@ ui <- dashboardPage(
       # Import tab content------------------
       tabItem(tabName = "dataimport",
               
-              column(6,
-                     h2('Data Import Instructions'),
-                     p('Upfront text'),
-                     box(width=12,
-                       h2('Data Import'),
-                       fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
-                       tags$em('Or Use Demo Data Button on Home Tab')
-                       #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
-                     )
-              ),#first column,
-                       
-              column(6,
-                h2("Required Data Format"),
-                p('This application is designed to temporarily load the user\'s data file 
+              fluidRow(
+                
+                column(6,
+                       h2('Data Import Instructions'),
+                       p('Data are added by uploading a CSV file or Configuring connection to a database source such as SQL Server or MS Access.'),
+                       box(width=12,
+                           h2('Data Import'),
+                           tags$em('Disabled for Demo Version. Use "Load Demo Data Button".'),
+                           actionButton(inputId = 'demoLoad2',label = 'Load Demo Data')
+                           #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                           #tags$em('Or Use Demo Data Button on Home Tab')
+                           #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+                       ),
+                       box(width=12,
+                           h2('Data Connection'),
+                           p('Pending')
+                           #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                           
+                           #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+                       )
+                ),#first column,
+                
+                column(6,
+                       h2("Required Data Format"),
+                       p('This application is designed to temporarily load the user\'s data file 
                   into memory for the duration of application use. User data are not 
                   retained on the server after application use.'),
-                p('The following information describes the required data format.'),
+                       p('The following information describes the required data format.'),
+                       
+                       tags$ul(
+                         
+                         tags$li('This app is hosted on the secure R Shinyapps.io server at https://peernisse/shinyapps.io/wqdashboard/.'),
+                         tags$li('If you have R installed and use R, you can download this app from https://github.com/peernisse/wqdashboard/.'),
+                         tags$li('The data to be analyzed must be in a `.csv` file in a local directory.'),
+                         tags$li('The data are not transfered to the app server to preserve data security.')
+                       )
+                       
+                )#Second column,
                 
-                tags$ul(
-                  
-                  tags$li('This app is hosted on the secure R Shinyapps.io server at https://peernisse/shinyapps.io/wqdashboard/.'),
-                  tags$li('If you have R installed and use R, you can download this app from https://github.com/peernisse/wqdashboard/.'),
-                  tags$li('The data to be analyzed must be in a `.csv` file in a local directory.'),
-                  tags$li('The data are not transfered to the app server to preserve data security.')
-                ),
+              ),#end fluid row
+              
+              fluidRow(
                 
                 h3('Your Data File Should Contain the Folowing Columns'),
-                h3('Example Table Structure')
-              )#Second column,
+                tableOutput('fields'),
+               
+                h3('Example Table Structure') 
+                
+              )#End fluid row
+              
+              
               
              
               
@@ -207,7 +229,7 @@ ui <- dashboardPage(
                   
                    uiOutput('tsFacetSwap'),
                    hr(),
-                   box(title='Time Series',width=12,collapsible = TRUE,collapsed = TRUE,
+                   box(title='Time Series',width=12,collapsible = TRUE,collapsed = FALSE,
                        
                        
                        h4('Click Plot Points for More Info'),
@@ -224,7 +246,7 @@ ui <- dashboardPage(
                  
                  fluidRow(
                    
-                   box(title='Boxplots',width=12,collapsible = TRUE,collapsed = TRUE,
+                   box(title='Boxplots',width=12,collapsible = TRUE,collapsed = FALSE,
                        h4('Click Plot Boxes for More Info'),
                        dataTableOutput("bplot_clickinfo"),
                        plotOutput("boxPlot",click = 'bxClick')
@@ -235,7 +257,7 @@ ui <- dashboardPage(
                  
                  fluidRow(
                    
-                   box(title='Probability Plots',width=12,collapsible = TRUE,collapsed = TRUE,
+                   box(title='Probability Plots',width=12,collapsible = TRUE,collapsed = FALSE,
                        
                        plotOutput("qPlot")
                        
@@ -246,8 +268,9 @@ ui <- dashboardPage(
                  
                  fluidRow(
                    
-                   box(title='Histograms',width=12,collapsible = TRUE,collapsed = TRUE,
-                       plotOutput("hPlot")
+                   box(title='Histograms',width=12,collapsible = TRUE,collapsed = FALSE,
+                       plotOutput("hPlot"),
+                       uiOutput('histSlider')
                     )#box
                  
                   )#fluid row
@@ -426,7 +449,7 @@ server <- function(input, output,session) {
       inFile <- input$file
     }
     
-    if(input$demoLoad > 0){
+    if(input$demoLoad > 0 | input$demoLoad2 > 0){
 
       inFile<-data.frame(
         name='demoData',
@@ -490,6 +513,11 @@ server <- function(input, output,session) {
         
         detect_flag == 'N' ~ 0.5*(reporting_detection_limit)
         
+      ),
+      DetectionFlag = case_when(
+        detect_flag == 'N' ~ 'ND',
+        detect_flag == 'Y' ~ '=',
+        TRUE ~ ''
       ),
       LATITUDE=as.numeric(LATITUDE),
       LONGITUDE=as.numeric(LONGITUDE)
@@ -570,27 +598,43 @@ server <- function(input, output,session) {
                  height:30px;margin-top:10px; ")
   })
   
+  #Sliders-----------------------------------
+  output$histSlider<-renderUI({
+    if(is.null(pData()))
+      return()
+    
+    sliderInput("ggBins",
+                "Number of bins:",
+                min = 10,
+                max = 100,
+                value = 30,
+                width = '50%')
+    
+  })
   
   
   #Stats tab items--------------------------------
   #Create stats table column picker-----------------
-  observe({
-    
-    if(input$selectall_Stats == 0) return(NULL) 
-    else if (input$selectall_Stats%%2 == 0)
-    {
-      updateCheckboxGroupInput(session,"stats",NULL,choices=statList,inline = TRUE)
-    }
-    else
-    {
-      updateCheckboxGroupInput(session,"stats",NULL,choices=statList,selected=statList,inline = TRUE)
-    }
-  })
+  # 
+  # observe({
+  #   statList<-names(statSumm())[-c(1:3)]
+  # 
+  #   if(input$selectall_Stats == 0) return(NULL)
+  #   else if (input$selectall_Stats%%2 == 0)
+  #   {
+  #     updateCheckboxGroupInput(session,"stats",NULL,choices=statList,inline = TRUE)
+  #   }
+  #   else
+  #   {
+  #     updateCheckboxGroupInput(session,"stats",NULL,choices=statList,selected=statList,inline = TRUE)
+  #   }
+  # })
+  
   output$choose_stats<-renderUI({
-    if(is.null(pData()))
+    if(is.null(statSumm()))
       return()
     
-    #statList<-names(statSumm())
+    statList<-names(statSumm())[-c(1:3)]
     #statList<-statList[-c(1:3)]
     
     checkboxGroupInput('stats',NULL,
@@ -602,37 +646,38 @@ server <- function(input, output,session) {
   
   
   
-  #Stats summary data table---------------------------
+  #Stats summary data table output based on checkbox selection---------------------------
   output$statsData <- renderDataTable({
     if(is.null(input$locids)|is.null(input$stats))
       return()
-    #sData <- statSumm() %>% select(input$stats)
-    sData <- statSumm()
+    sData <- statSumm() %>% select(1:3,input$stats)
+    #sData <- statSumm()
     return(sData)
   })
   
+  #Making raw stats summary table
   statSumm <- reactive({
     
     pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
                        Date >= input$dtRng[1] & Date<=input$dtRng[2],
                        Parameter %in% input$params) %>% 
       group_by(Matrix, Parameter,Location) %>% 
-      summarise(`Number of Observations`=length(Value),
+      summarise(`Number of Observations`=length(RESULT_ND),
                 `Percent Non-Detect`=round(perND(DetectionFlag,'ND'),0),
                 `Minimum Date`=min(Date),
                 `Maximum Date`=max(Date),
-                Minimum=as.character(ifelse(min(Value)==0,'ND',min(Value))),
-                Maximum=max(Value),
-                `First Quartile`=as.character(ifelse(quantile(Value,0.25)==0,'ND',quantile(Value,0.25))),
-                `Third Quartile`=as.character(ifelse(quantile(Value,0.75)==0,'ND',quantile(Value,0.75))),
-                Average=mean(Value),
-                `Standard Deviation`=sd(Value),
-                Variance=var(Value)) %>% 
-      select(1:3,input$stats)
+                Minimum=as.character(ifelse(min(RESULT_ND)==0,'ND',min(RESULT_ND))),
+                Maximum=max(RESULT_ND),
+                `First Quartile`=as.character(ifelse(quantile(RESULT_ND,0.25)==0,'ND',quantile(RESULT_ND,0.25))),
+                `Third Quartile`=as.character(ifelse(quantile(RESULT_ND,0.75)==0,'ND',quantile(RESULT_ND,0.75))),
+                Average=mean(RESULT_ND),
+                `Standard Deviation`=sd(RESULT_ND),
+                Variance=var(RESULT_ND))
+
     
   })
   
-  
+ 
   
   #Export stats summary table download button------------------
   #Output handler
@@ -666,7 +711,7 @@ server <- function(input, output,session) {
       addProviderTiles('Esri.WorldImagery') %>% 
       addProviderTiles("CartoDB.PositronOnlyLabels") %>% 
       #setView(mCenter[2], mCenter[1],zoom = 1) %>% 
-      setMaxBounds(mBounds[2],mBounds[4],mBounds[1],mBounds[3]) %>% 
+      #setMaxBounds(mBounds[2],mBounds[4],mBounds[1],mBounds[3]) %>% 
       addCircles(data=maplocs,lng = ~LONGITUDE,lat = ~LATITUDE,label = ~Location, labelOptions = c(permanent = TRUE),
                        radius = 8, stroke = FALSE,fillOpacity = 0.8,  fillColor='#ed7000') %>%  
       addScaleBar(position='bottomright') %>% 
@@ -698,7 +743,7 @@ server <- function(input, output,session) {
 
     checkboxGroupInput('locids',NULL,
                        choices = locs,
-                       selected = NULL)
+                       selected = locs[1])
     
     
     
@@ -716,7 +761,7 @@ server <- function(input, output,session) {
 
     if(input$selectall_Locs == 0)
     {
-      updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=NULL)
+      updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=locs[1])
     }
     else if (input$selectall_Locs%%2 == 0)
     {
@@ -743,13 +788,15 @@ server <- function(input, output,session) {
       updateCheckboxGroupInput(session,"params",NULL,choices=params,selected=params)
     }
   })
+  
   output$choose_params<-renderUI({
     if(is.null(pData()))
       return()
     params<-sort(unique(pData()$Parameter))
 
     checkboxGroupInput('params',NULL,
-                       choices = params)
+                       choices = params,
+                       selected = params[1])
   })
 
   #Create matrix picker
@@ -870,6 +917,17 @@ server <- function(input, output,session) {
 
     return(unique(fData))
   })
+  
+  #Output for wide format table
+  
+  
+  #Output for example field name table
+  output$fields<-renderTable({
+    fields
+  })
+  
+  
+  
   
   
   #Plots---------------------------
@@ -1066,7 +1124,7 @@ server <- function(input, output,session) {
                                 Matrix %in% input$mtrx))
     
     ggplot(hData,aes(x=RESULT_ND))+
-      geom_histogram(aes_string(fill=hCol),alpha=0.5)+
+      geom_histogram(aes_string(fill=hCol),alpha=0.5,bins = input$ggBins)+
       facet_wrap(as.formula(paste('~',hFacet)), scales="free")+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
