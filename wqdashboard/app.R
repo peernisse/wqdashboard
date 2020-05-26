@@ -407,11 +407,7 @@ ui <- dashboardPage(
                        
                        leafletOutput(
                          'map',height = 600,width = 650
-                       ),
-                       
-                       fluidRow(tags$button('Satellite',style='margin-top:10px; margin-left:10px;'),
-                                tags$button('Roads',style='margin-top:4px;')
-                                )#fluidRow
+                       )
 
                        )#column2
                 
@@ -730,20 +726,21 @@ server <- function(input, output,session) {
     if(is.null(pData()))
       return()
     
-    maplocs<-pData() %>% select(Location,LATITUDE,LONGITUDE) %>% filter(Location %in% input$locids) %>% unique(.)
+    maplocs<-pData() %>% select(Location,LATITUDE,LONGITUDE) %>% 
+      filter(Location %in% input$locids) %>% unique(.)
     #mCenter<- c(mean(maplocs$LATITUDE),mean(maplocs$LONGITUDE))
-    mBounds<-c(max(maplocs$LONGITUDE),min(maplocs$LONGITUDE),max(maplocs$LATITUDE),min(maplocs$LATITUDE))
+    #mBounds<-c(max(maplocs$LONGITUDE),min(maplocs$LONGITUDE),max(maplocs$LATITUDE),min(maplocs$LATITUDE))
+    
     
     m <- leaflet() %>% 
-      # addTiles() %>% 
-      addProviderTiles('Esri.WorldImagery') %>% 
-      addProviderTiles("CartoDB.PositronOnlyLabels") %>% 
+      addTiles(group="Roads") %>% 
+      addProviderTiles('Esri.WorldImagery',group="Satellite") %>% 
+      #addProviderTiles("CartoDB.PositronOnlyLabels") %>% 
       #setView(mCenter[2], mCenter[1],zoom = 1) %>% 
       #setMaxBounds(mBounds[2],mBounds[4],mBounds[1],mBounds[3]) %>% 
       addCircles(data=maplocs,lng = ~LONGITUDE,lat = ~LATITUDE,label = ~Location, labelOptions = c(permanent = TRUE),
-                       radius = 8, stroke = FALSE,fillOpacity = 0.8,  fillColor='#ed7000') %>%  
+                       radius = 8, group = "Locations",stroke = FALSE,fillOpacity = 0.8,  fillColor='#ed7000') %>%  
       addScaleBar(position='bottomright') %>% 
-      addLayersControl() %>% 
       addMeasure(
         position = "topright",
         primaryLengthUnit = "feet",
@@ -751,7 +748,12 @@ server <- function(input, output,session) {
         activeColor = "#3D535D",
         completedColor = "#7D4479",
         localization = "en"
-      )#add measure
+      ) %>% #add measure
+      addLayersControl(
+        baseGroups = c("Satellite","Roads"),
+        overlayGroups = c("Locations"),
+        options = layersControlOptions(collapsed = FALSE)
+      )
     
     
     return(m)
