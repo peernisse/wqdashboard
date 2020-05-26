@@ -222,25 +222,41 @@ ui <- dashboardPage(
       # Plotting tab---------------------
       tabItem(tabName = 'plots',
         h2('Plotting Tools'),
-          column(width=12,
+          
+        fluidRow(
+          
+          column(width = 6,
                  h4('Swap Faceting Variables'),
+                 uiOutput('tsFacetSwap')
+
+                 ),#End facet swap column
+          
+          column(width = 6,
+                 h4('Set Scales Fixed or Auto'),
+                 uiOutput('scalesSet')
+                 
+                 ),#End scales fixed or free column
+          hr()
+       ),#End fluid row plot tools tools
+        
+        
+        fluidRow(
+          column(width=12,
+                 
                  
                  fluidRow(
-                  
-                   uiOutput('tsFacetSwap'),
-                   hr(),
+                   
                    box(title='Time Series',width=12,collapsible = TRUE,collapsed = FALSE,
                        
                        
                        h4('Click Plot Points for More Info'),
                        dataTableOutput("plot_clickinfo"),
-                       plotOutput("timeSeriesPlot",click = 'tsClick'),
-                       hr()
+                       plotOutput("timeSeriesPlot",click = 'tsClick')
                        
                        
                        
-                       )#box ts
-                          
+                   )#box ts
+                   
                  ),#fluid row,
                  
                  
@@ -250,9 +266,9 @@ ui <- dashboardPage(
                        h4('Click Plot Boxes for More Info'),
                        dataTableOutput("bplot_clickinfo"),
                        plotOutput("boxPlot",click = 'bxClick')
-                       )#box
-                          
-                  ),#fluid row,
+                   )#box
+                   
+                 ),#fluid row,
                  
                  
                  fluidRow(
@@ -262,25 +278,25 @@ ui <- dashboardPage(
                        plotOutput("qPlot")
                        
                        
-                       )#box
-                          
-                  ),#fluid row
+                   )#box
+                   
+                 ),#fluid row
                  
                  fluidRow(
                    
                    box(title='Histograms',width=12,collapsible = TRUE,collapsed = FALSE,
                        plotOutput("hPlot"),
                        uiOutput('histSlider')
-                    )#box
+                   )#box
+                   
+                 )#end fluid row plot boxes
                  
-                  )#fluid row
-                 
-            )#column
+          )#End plotting boxes column
           
           
-        
-        
-      ),#Plotting tab
+        )#End plots container row
+          
+    ),#Plotting tab
       
       #Tables tab----------------------
       tabItem(tabName = 'tables',
@@ -377,10 +393,7 @@ ui <- dashboardPage(
         
       ),#stats tab
       
-      
-      
-      
-      #Map tab------------------------
+    #Map tab------------------------
       tabItem(tabName = 'maptools',
               h2('Map Explore'),
               fluidRow(
@@ -391,8 +404,9 @@ ui <- dashboardPage(
                 column(width=10,
                        h3('Site Map'),
                         
+                       
                        leafletOutput(
-                         'map'
+                         'map',height = 600,width = 650
                        ),
                        
                        fluidRow(tags$button('Satellite',style='margin-top:10px; margin-left:10px;'),
@@ -579,6 +593,20 @@ server <- function(input, output,session) {
     
   })
   
+  #Create plot scales free or fixed picklist
+  output$scalesSet<-renderUI({
+    
+    
+    pickerInput('sclsChoices',
+                choices = c('Free All',
+                            'Fix All',
+                            'Free Y, X Fixed',
+                            'Free X, Y Fixed'
+                ),
+                selected = 'Free All')
+  })#End output scalesSet
+  
+  
   
   #Buttons-------------------------------------------------
   #Date range refresh button action
@@ -725,6 +753,7 @@ server <- function(input, output,session) {
         localization = "en"
       )#add measure
     
+    
     return(m)
     
   })
@@ -734,7 +763,7 @@ server <- function(input, output,session) {
   #Pickers----------------------------------------------------
   
   #Create location picker
-  #This loads up by default with no choices available
+  #This loads up by default with first location picked just so folks are not confused
   output$choose_locs<-renderUI({
 
     if(is.null(pData()))
@@ -865,6 +894,8 @@ server <- function(input, output,session) {
     
   })
   
+  
+  
   #Create regression tool parameter picker-----
   observe({
     
@@ -948,6 +979,11 @@ server <- function(input, output,session) {
       
     }
     
+    if(input$sclsChoices == 'Free All'){scls<-'free'}
+    if(input$sclsChoices == 'Fix All'){scls<-'fixed'}
+    if(input$sclsChoices == 'Free Y, X Fixed'){scls<-'free_y'}
+    if(input$sclsChoices == 'Free X, Y Fixed'){scls<-'free_x'}
+    
     
     tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                  Date >= input$dtRng[1] & Date<=input$dtRng[2],
@@ -963,7 +999,7 @@ server <- function(input, output,session) {
       geom_point(aes_string(colour=col),size=3)+
       geom_point(aes(x=Date,y=NDS,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
       scale_fill_manual(values='white')+
-      facet_wrap(as.formula(paste('~',tsFacet)),scales="free")+
+      facet_wrap(as.formula(paste('~',tsFacet)),scales=scls)+
       theme(legend.position = "bottom", legend.title = element_blank())+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       labs(x="Date",y="Value",title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")+
@@ -1012,6 +1048,10 @@ server <- function(input, output,session) {
     }
     
     
+    if(input$sclsChoices == 'Free All'){scls<-'free'}
+    if(input$sclsChoices == 'Fix All'){scls<-'fixed'}
+    if(input$sclsChoices == 'Free Y, X Fixed'){scls<-'free_y'}
+    if(input$sclsChoices == 'Free X, Y Fixed'){scls<-'free_x'}
     
     
     bxData<-as.data.frame(filter(pData(),Location %in% input$locids,
@@ -1025,7 +1065,7 @@ server <- function(input, output,session) {
       geom_boxplot(aes_string(fill=bxCol))+
       #geom_jitter(color="black")+
       #geom_jitter(aes(x=Location,y=NonDetect),color="white")+
-      facet_wrap(as.formula(paste('~',bxFacet)), scales="free")+
+      facet_wrap(as.formula(paste('~',bxFacet)), scales=scls)+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
       labs(x="Location",y="Value",title="Boxplots Non-Detects at 1/2 the Reporting Limit")+
@@ -1086,6 +1126,11 @@ server <- function(input, output,session) {
     }
     
     
+    if(input$sclsChoices == 'Free All'){scls<-'free'}
+    if(input$sclsChoices == 'Fix All'){scls<-'fixed'}
+    if(input$sclsChoices == 'Free Y, X Fixed'){scls<-'free_y'}
+    if(input$sclsChoices == 'Free X, Y Fixed'){scls<-'free_x'}
+    
     
     qData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                 Date >= input$dtRng[1] & Date<=input$dtRng[2],
@@ -1095,7 +1140,7 @@ server <- function(input, output,session) {
     ggplot(qData,aes(sample=as.numeric(RESULT_ND)))+
       geom_qq(aes_string(color=qqCol))+
       geom_qq_line(aes_string(color=qqCol))+
-      facet_wrap(as.formula(paste('~',qqFacet)), scales="free")+
+      facet_wrap(as.formula(paste('~',qqFacet)), scales=scls)+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
       labs(x="Theoretical Distribution(normal)",y="Value",title="Distribution (quantile plot) Non-Detects at 1/2 the Reporting Limit")+
@@ -1118,6 +1163,12 @@ server <- function(input, output,session) {
       
     }
     
+    
+    if(input$sclsChoices == 'Free All'){scls<-'free'}
+    if(input$sclsChoices == 'Fix All'){scls<-'fixed'}
+    if(input$sclsChoices == 'Free Y, X Fixed'){scls<-'free_y'}
+    if(input$sclsChoices == 'Free X, Y Fixed'){scls<-'free_x'}
+    
     hData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                 Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                 Parameter %in% input$params,
@@ -1125,7 +1176,7 @@ server <- function(input, output,session) {
     
     ggplot(hData,aes(x=RESULT_ND))+
       geom_histogram(aes_string(fill=hCol),alpha=0.5,bins = input$ggBins)+
-      facet_wrap(as.formula(paste('~',hFacet)), scales="free")+
+      facet_wrap(as.formula(paste('~',hFacet)), scales=scls)+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
       labs(x="Value Bins=30",y="Count",title="Distribution (histogram) Non-Detects at 1/2 the Reporting Limit")+
