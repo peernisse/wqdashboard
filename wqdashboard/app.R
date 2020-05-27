@@ -1,9 +1,11 @@
 ## app.R ##
 library(shiny)
+library(DT)
 library(shinydashboard)
 library(shinyWidgets)
 library(tidyverse)
 library(leaflet)
+library(rpivotTable)
 source('helpers.R')
 options(scipen = 6)
 
@@ -12,6 +14,8 @@ options(scipen = 6)
 
 #Start App--------------------------
 ui <- dashboardPage(
+  
+  #Start dashboard header----------
   dashboardHeader(title='Water Quality Explore',
                   
                   dropdownMenu(type = "tasks", badgeStatus = "success",
@@ -31,6 +35,8 @@ ui <- dashboardPage(
                   
                   
                   ),#Dashboarrd header
+  
+  #Start dashboard sidebar----------------
   dashboardSidebar(width=400,
     #h3('Pages',style = "margin-left:5px;"),
     sidebarMenu(
@@ -98,8 +104,7 @@ ui <- dashboardPage(
       
   ),#dashboardSidebar
   
-  ###########PAGES#############################
-  #############################################
+  #Start dashboard body-----------
   
   dashboardBody(
     tabItems(
@@ -207,12 +212,7 @@ ui <- dashboardPage(
                 h3('Example Table Structure') 
                 
               )#End fluid row
-              
-              
-              
-             
-              
-
+        
       ),#Import tab
       
       # Water quality criteria tab-------------------
@@ -300,21 +300,21 @@ ui <- dashboardPage(
       
       #Tables tab----------------------
       tabItem(tabName = 'tables',
-              box(title="Filtered Data Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
-                  overflow-y: scroll;",
-                  
-                  dataTableOutput('tblData')
-                  
-                  
-                  ),#box,
-              
-              box(title="Wide Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
-                  overflow-y: scroll;",
-                  
-                  h3('Pending')
-                  
-                  
-              )
+                box(title="Pivot Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
+                      overflow-y: scroll;",
+                      
+                    rpivotTableOutput('pvtTable')
+                      
+                      
+                  ),
+                box(title="Filtered Data Table",width=12,collapsible = TRUE,collapsed = TRUE,style="overflow-x: scroll;
+                    overflow-y: scroll;",
+                    
+                    #dataTableOutput('tblData')
+                    DTOutput('tblData')
+                    
+                    
+                )#box,
               
               
               ),#Tables tab
@@ -372,22 +372,25 @@ ui <- dashboardPage(
         tabName = 'statstests',
         fluidRow(
           
-          column(6, h3('Select Stats to Show'),
-                 actionLink('selectall_Stats','Select All | Clear All'),
-                 uiOutput('choose_stats')),
-          column(6,h3('Output this Table to CSV'),
-                 fluidRow(
-                   column(6,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
-                   column(1,h4('.csv'),style='padding-left: 0px;'),
-                   column(2,downloadButton('expStats','Download'))
-                   
-                 )
-          )
-        ),
+          column(12, h3('Select Stats to Show'),
+                 #actionLink('selectall_Stats','Select All | Clear All'),
+                 uiOutput('choose_stats')
+                 
+                 )#,#end column
+          
+          # column(6,h3('Output this Table to CSV'),
+          #        fluidRow(
+          #          column(6,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
+          #          column(1,h4('.csv'),style='padding-left: 0px;'),
+          #          column(2,downloadButton('expStats','Download'))
+          #          
+          #        )#End fluid row
+          # )#End column
+        ),#End fluid row
         
         hr(),
         
-        dataTableOutput('statsData')
+       DTOutput('statsData')
         
         
         
@@ -428,13 +431,13 @@ ui <- dashboardPage(
   )#????
 )#Dashboard page?
 
-###########################################################
+#'##########################################################
 #Server side section---------------------------------------
-###################################
+#'##################################
 
 server <- function(input, output,session) {
   
-  #######################################################
+  #'######################################################
   #Placeholder histogram to be removed
   output$distPlot <- renderPlot({
     # generate bins based on input$bins from ui.R
@@ -444,13 +447,13 @@ server <- function(input, output,session) {
     # draw the histogram with the specified number of bins
     hist(x, breaks = bins, col = 'darkgray', border = 'white')
   })
-  #######################################################
-  #TESTING DATA INPUT
+  #'######################################################
+  #'TESTING DATA INPUT
   
   
-  #####################################################
-  #######################################################
-  ####################################################
+  #'####################################################
+  #'######################################################
+  #'###################################################
 
   #File input load--------------
   pData <- reactive({
@@ -538,7 +541,7 @@ server <- function(input, output,session) {
    return(tbl)
   })
   
-  #Get min and max dates
+  #Get min and max dates-------------------
   baseDates <- reactive({
     if(input$demoLoad == 0) {
       inFile <- input$file
@@ -568,18 +571,56 @@ server <- function(input, output,session) {
   })
   
   
-#Data table ouput----------------------------
-  # output$tblData<-renderDataTable({
-  # 
-  #   # if(is.null(input$file))
-  #   #   return()
-  # 
-  #   dtable<-pData()
-  # 
-  #   return(dtable)
-  # 
-  # })#output tblData
+  #Data table output-------------------
+  #Output for long format data table
   
+  output$tblData <- renderDT({
+    if(is.null(input$locids))
+      return()
+    
+    fData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
+                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                              Parameter %in% input$params, Site %in% input$sts) %>%
+      arrange(Location,Date)
+    fData$Date<-as.character(fData$Date)
+    
+    fData %>% 
+      datatable(.,extensions = 'Buttons',
+                options = list(dom = 'Bfrtip',
+                               exportOptions = list(title = NULL),
+                               buttons = c('copy', 'csv', 'excel', 'pdf')
+                               
+                               )
+      )#end datatable
+    
+    #return(unique(fData))
+  })
+  
+  #Output for wide format table----
+  
+  
+  #Output for example field name table----
+  output$fields<-renderTable({
+    fields
+  })
+  
+  
+  
+  #Pivot table output----------
+  output$pvtTable<-renderRpivotTable({
+    
+    if(is.null(input$locids))
+      return()
+    
+   pvtData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
+                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                              Parameter %in% input$params, Site %in% input$sts) %>%
+      arrange(Location,Date)
+   pvtData$Date<-as.character(pvtData$Date)
+    
+    rpivotTable(unique(pvtData))
+    
+  })
   
   #Dropdowns-------------------
   #Swap plot faceting variable picklist
@@ -671,12 +712,22 @@ server <- function(input, output,session) {
   
   
   #Stats summary data table output based on checkbox selection---------------------------
-  output$statsData <- renderDataTable({
+  output$statsData <- renderDT({
     if(is.null(input$locids)|is.null(input$stats))
       return()
     sData <- statSumm() %>% select(1:3,input$stats)
     #sData <- statSumm()
-    return(sData)
+    #return(sData)
+    
+    sData %>% 
+      datatable(.,extensions = 'Buttons',
+                options = list(dom = 'Bfrtip',
+                               exportOptions = list(title = NULL),
+                               buttons = c('copy', 'csv', 'excel', 'pdf')
+                               
+                )
+      )#end datatable
+    
   })
   
   #Making raw stats summary table
@@ -688,8 +739,8 @@ server <- function(input, output,session) {
       group_by(Matrix, Parameter,Location) %>% 
       summarise(`Number of Observations`=length(RESULT_ND),
                 `Percent Non-Detect`=round(perND(DetectionFlag,'ND'),0),
-                `Minimum Date`=min(Date),
-                `Maximum Date`=max(Date),
+                `Minimum Date`=as.character(min(Date)),
+                `Maximum Date`=as.character(max(Date)),
                 Minimum=as.character(ifelse(min(RESULT_ND)==0,'ND',min(RESULT_ND))),
                 Maximum=max(RESULT_ND),
                 `First Quartile`=as.character(ifelse(quantile(RESULT_ND,0.25)==0,'ND',quantile(RESULT_ND,0.25))),
@@ -705,20 +756,16 @@ server <- function(input, output,session) {
   
   #Export stats summary table download button------------------
   #Output handler
-  output$expStats <- downloadHandler(
-    
-    filename = function() {
-      paste(input$expStatsFilename, ".csv", sep = "")
-    },
-    
-    content = function(file) {
-      write.csv(statSumm(), file, row.names = FALSE)
-    }
-  )#downloadhandler
-  
-  
-  
-  
+  # output$expStats <- downloadHandler(
+  #   
+  #   filename = function() {
+  #     paste(input$expStatsFilename, ".csv", sep = "")
+  #   },
+  #   
+  #   content = function(file) {
+  #     write.csv(statSumm(), file, row.names = FALSE)
+  #   }
+  # )#downloadhandler
   
   #Map dataframe------------------------------
   
@@ -933,33 +980,6 @@ server <- function(input, output,session) {
     pickerInput('regrY',choices=input$params)
     
   })
-  
-  
-  #Data table output-------------------
-  #Output for long format data table
-  
-  output$tblData <- renderDataTable({
-    if(is.null(input$locids))
-      return()
-
-    fData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
-                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                              Parameter %in% input$params, Site %in% input$sts) %>%
-      arrange(Location,Date)
-    fData$Date<-as.character(fData$Date)
-
-    return(unique(fData))
-  })
-  
-  #Output for wide format table
-  
-  
-  #Output for example field name table
-  output$fields<-renderTable({
-    fields
-  })
-  
-  
   
   
   
