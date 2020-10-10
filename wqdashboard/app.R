@@ -464,6 +464,7 @@ server <- function(input, output,session) {
   #File input load--------------
   pData <- reactive({
     
+    
     if(input$demoLoad == 0) {
       inFile <- input$file
     }
@@ -503,6 +504,18 @@ server <- function(input, output,session) {
     #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
     #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
 
+    #Set up limits column if it has been selected
+    
+  #   print(input$limcol)#Testing
+  # 
+  #   tbl$Limits<-tbl[,input$limcol]
+  # 
+  # print(names(tbl))
+  #   
+    
+   
+    
+    #Fix date format to be date
     tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
     #Fix unit cases
     tbl<-fixUnits(tbl)
@@ -652,9 +665,11 @@ server <- function(input, output,session) {
   
   #Create field picker for environmental imits column
   output$limits<-renderUI({
+    if(is.null(pData()))
+      return()
     
-    pickerInput('limcol',choices = names(pData()),
-                selected=names(pData())[1]) 
+    pickerInput('limcol',choices = c('None',names(pData())),
+                selected= 'None') 
     
   })#end limits picker
   
@@ -667,8 +682,7 @@ server <- function(input, output,session) {
   
   #Create refresh date range button
   output$reset_dates <- renderUI({
-    if(is.null(pData()))
-      return()
+    
     actionButton('clrDates',NULL,
                  icon("refresh"), 
                  style="color: #fff; background-color: #337ab7; 
@@ -1020,15 +1034,35 @@ server <- function(input, output,session) {
     if(input$sclsChoices == 'Free X, Y Fixed'){scls<-'free_x'}
     
     
+    
     tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                  Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                  Parameter %in% input$params,
                                  Matrix %in% input$mtrx))
+    #Make table of limits
+    myTest<-"Not working"
+    
+    if(!is.null(input$limcol)){
+      myTest<-input$limcol
+    }
+    
+    
+    
+    # if(input$limcol != "None"){
+    #   limitscolumn<-pData()[.input$limcol]
+    #   
+    #   limData<-tsData %>% 
+    #     group_by(Parameter) %>% 
+    #     summarize(Limit = min(limitscolumn))
+    # }
+    # 
+    # print(limData)
+    
     #tsp<-tsPlot(tsData,tsFacet,col)
     
     #return(tsp)
     
-    #testing ggplot login inside this instead of function
+    #testing ggplot logic inside this instead of function
     ggplot(tsData,aes(x=Date,y=RESULT_ND))+
       geom_line(aes_string(colour=col),size=0.5)+
       geom_point(aes_string(colour=col),size=3)+
@@ -1037,7 +1071,9 @@ server <- function(input, output,session) {
       facet_wrap(as.formula(paste('~',tsFacet)),scales=scls)+
       theme(legend.position = "bottom", legend.title = element_blank())+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
-      labs(x="Date",y="Value",title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")+
+      labs(x="Date",y="Value",
+           title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit",
+           subtitle = myTest)+
       theme(plot.title = element_text(face='bold',size=14))
     
     
