@@ -170,9 +170,11 @@ ui <- dashboardPage(
                        p('Data are added by uploading a CSV file or Configuring connection to a database source such as SQL Server or MS Access.'),
                        box(width=12,
                            h2('Data Import'),
-                           tags$em('Disabled for Demo Version. Use "Load Demo Data Button".'),
-                           actionButton(inputId = 'demoLoad2',label = 'Load Demo Data')
-                           #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                           tags$em('If "Choose File does not appear, 
+                                   file upload is disabled for Demo Version. 
+                                   Use "Load Demo Data" on the Home Tab.'),
+                           #actionButton(inputId = 'demoLoad2',label = 'Load Demo Data'),
+                           fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv')#,
                            #tags$em('Or Use Demo Data Button on Home Tab')
                            #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
                        ),
@@ -217,7 +219,22 @@ ui <- dashboardPage(
       
       # Water quality criteria tab-------------------
       tabItem(tabName='wqc',
-              h2('Configure Water Quality Criteria')),#Water quality criteria tab
+              h2('Configure Water Quality Criteria'),
+              fluidRow(
+                column(6,
+                  h3('Select Environmental Limits Column'),
+                  p('The data in this column can be used to flag 
+                    values in tables and to draw horizontal lines on plots'),
+                  uiOutput('limits')
+                  
+                ),#End column
+                column(6,
+                  p('Pending Area')       
+                )#End column
+                
+              )#end fluidrow
+              
+      ),#Water quality criteria tab
       
       # Plotting tab---------------------
       tabItem(tabName = 'plots',
@@ -437,18 +454,7 @@ ui <- dashboardPage(
 
 server <- function(input, output,session) {
   
-  #'######################################################
-  #Placeholder histogram to be removed
-  output$distPlot <- renderPlot({
-    # generate bins based on input$bins from ui.R
-    x    <- faithful[, 2] 
-    bins <- seq(min(x), max(x), length.out = input$bins + 1)
-    
-    # draw the histogram with the specified number of bins
-    hist(x, breaks = bins, col = 'darkgray', border = 'white')
-  })
-  #'######################################################
-  #'TESTING DATA INPUT
+  options(shiny.maxRequestSize=30*1024^2)
   
   
   #'####################################################
@@ -462,7 +468,8 @@ server <- function(input, output,session) {
       inFile <- input$file
     }
     
-    if(input$demoLoad > 0 | input$demoLoad2 > 0){
+    #if(input$demoLoad > 0 | input$demoLoad2 > 0){
+    if(input$demoLoad > 0 ){
 
       inFile<-data.frame(
         name='demoData',
@@ -643,7 +650,13 @@ server <- function(input, output,session) {
                 selected = 'Free All')
   })#End output scalesSet
   
-  
+  #Create field picker for environmental imits column
+  output$limits<-renderUI({
+    
+    pickerInput('limcol',choices = names(pData()),
+                selected=names(pData())[1]) 
+    
+  })#end limits picker
   
   #Buttons-------------------------------------------------
   #Date range refresh button action
