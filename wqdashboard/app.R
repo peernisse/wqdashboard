@@ -1039,34 +1039,46 @@ server <- function(input, output,session) {
                                  Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                  Parameter %in% input$params,
                                  Matrix %in% input$mtrx))
+    
+    tlvs<-pull(tsData,Parameter) %>% unique(.) %>% sort(.)
+    tsData$Parameter<-factor(tsData$Parameter,levels = tlvs)
+    
+    print(str(tsData))
+    
     #Make table of limits
     myTest<-"Not working"
     
     if(!is.null(input$limcol)){
-      myTest<-input$limcol
+      lData<-tsData %>%
+        select(Parameter,input$limcol) %>%
+        as.data.frame(.)
+
+      names(lData)<-c('Parameter','Limits')
+
+      myTest<-"Working"
+
+      lData<-lData %>%
+        group_by(Parameter) %>%
+        summarize(Limits = median(Limits)) %>%
+        as.data.frame(.) %>%
+        arrange(Parameter)
+
+      lvs<-pull(lData,Parameter)
+
+      lData$Parameter<-factor(lData$Parameter,levels = lvs)
+
+      print(head(lData))
+      print(str(lData))
     }
-    
-    
-    
-    # if(input$limcol != "None"){
-    #   limitscolumn<-pData()[.input$limcol]
-    #   
-    #   limData<-tsData %>% 
-    #     group_by(Parameter) %>% 
-    #     summarize(Limit = min(limitscolumn))
-    # }
-    # 
-    # print(limData)
-    
-    #tsp<-tsPlot(tsData,tsFacet,col)
-    
-    #return(tsp)
-    
+
+      if(!is.null(input$limcol)){hline<-"Yes"} else {hline<-"No"}
+   
     #testing ggplot logic inside this instead of function
     ggplot(tsData,aes(x=Date,y=RESULT_ND))+
       geom_line(aes_string(colour=col),size=0.5)+
       geom_point(aes_string(colour=col),size=3)+
       geom_point(aes(x=Date,y=NDS,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
+      {if(hline=="Yes")geom_hline(data = lData,aes(yintercept = Limits))}+
       scale_fill_manual(values='white')+
       facet_wrap(as.formula(paste('~',tsFacet)),scales=scls)+
       theme(legend.position = "bottom", legend.title = element_blank())+
