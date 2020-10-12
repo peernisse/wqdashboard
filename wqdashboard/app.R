@@ -1043,10 +1043,11 @@ server <- function(input, output,session) {
     tlvs<-pull(tsData,Parameter) %>% unique(.) %>% sort(.)
     tsData$Parameter<-factor(tsData$Parameter,levels = tlvs)
     
-    print(str(tsData))
+    #print(str(tsData))
     
     #Make table of limits
-    myTest<-"Not working"
+    #myTest<-"Not working"
+    print(input$limcol)
     
     if(!is.null(input$limcol)){
       lData<-tsData %>%
@@ -1055,7 +1056,7 @@ server <- function(input, output,session) {
 
       names(lData)<-c('Parameter','Limits')
 
-      myTest<-"Working"
+      #myTest<-"Working"
 
       lData<-lData %>%
         group_by(Parameter) %>%
@@ -1067,8 +1068,8 @@ server <- function(input, output,session) {
 
       lData$Parameter<-factor(lData$Parameter,levels = lvs)
 
-      print(head(lData))
-      print(str(lData))
+      # print(head(lData))
+      # print(str(lData))
     }
 
       if(!is.null(input$limcol)){hline<-"Yes"} else {hline<-"No"}
@@ -1077,15 +1078,15 @@ server <- function(input, output,session) {
     ggplot(tsData,aes(x=Date,y=RESULT_ND))+
       geom_line(aes_string(colour=col),size=0.5)+
       geom_point(aes_string(colour=col),size=3)+
-      geom_point(aes(x=Date,y=NDS,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
-      {if(hline=="Yes")geom_hline(data = lData,aes(yintercept = Limits))}+
+      geom_point(aes(x=Date,y=NDS,fill='Non-Detect'),shape=21,size=2)+
+      {if(hline=="Yes")geom_hline(data = lData,aes(yintercept = Limits,linetype = 'Limit'),color='red')}+
       scale_fill_manual(values='white')+
+      scale_linetype_manual(values = c('dashed'))+
       facet_wrap(as.formula(paste('~',tsFacet)),scales=scls)+
       theme(legend.position = "bottom", legend.title = element_blank())+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       labs(x="Date",y="Value",
-           title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit",
-           subtitle = myTest)+
+           title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")+
       theme(plot.title = element_text(face='bold',size=14))
     
     
@@ -1141,13 +1142,48 @@ server <- function(input, output,session) {
                                  Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                  Parameter %in% input$params,
                                  Matrix %in% input$mtrx))
+    
+    blvs<-pull(bxData,Parameter) %>% unique(.) %>% sort(.)
+    bxData$Parameter<-factor(bxData$Parameter,levels = blvs)
+    
+    #print(str(bxData))
+    
+    #Make table of limits
+    #myTest<-"Not working"
+    
+    if(!is.null(input$limcol)){
+      lData<-bxData %>%
+        select(Parameter,input$limcol) %>%
+        as.data.frame(.)
+      
+      names(lData)<-c('Parameter','Limits')
+      
+      #myTest<-"Working"
+      
+      lData<-lData %>%
+        group_by(Parameter) %>%
+        summarize(Limits = median(Limits)) %>%
+        as.data.frame(.) %>%
+        arrange(Parameter)
+      
+      lvs<-pull(lData,Parameter)
+      
+      lData$Parameter<-factor(lData$Parameter,levels = lvs)
+      
+      # print(head(lData))
+      # print(str(lData))
+    }
+    
+    if(!is.null(input$limcol)){hline<-"Yes"} else {hline<-"No"}
     # bxp<-bxPlot(bxData)
     # return(bxp)
     
     ggplot(bxData,aes(x=Location,y=RESULT_ND))+
       geom_boxplot(aes_string(fill=bxCol))+
+      {if(hline=="Yes")geom_hline(data = lData,aes(yintercept = Limits,linetype = 'Limit'),color='red')}+
       #geom_jitter(color="black")+
       #geom_jitter(aes(x=Location,y=NonDetect),color="white")+
+      scale_linetype_manual(values = c('dashed'))+
       facet_wrap(as.formula(paste('~',bxFacet)), scales=scls)+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
       theme(legend.position = "bottom", legend.title = element_blank())+
