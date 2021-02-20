@@ -1,9 +1,11 @@
 ## app.R ##
 library(shiny)
 library(DT)
+library(data.table)
 library(shinydashboard)
 library(shinyWidgets)
 library(tidyverse)
+library(openxlsx)
 library(leaflet)
 library(rpivotTable)
 source('helpers.R')
@@ -165,33 +167,12 @@ ui <- dashboardPage(
               
               fluidRow(
                 
-                column(6,
+                column(8,
                        h2('Data Import Instructions'),
-                       p('Data are added by uploading a CSV file or Configuring connection to a database source such as SQL Server or MS Access.'),
-                       box(width=12,
-                           h2('Data Import'),
-                           tags$em('If "Choose File does not appear, 
-                                   file upload is disabled for Demo Version. 
-                                   Use "Load Demo Data" on the Home Tab.'),
-                           #actionButton(inputId = 'demoLoad2',label = 'Load Demo Data'),
-                           fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv')#,
-                           #tags$em('Or Use Demo Data Button on Home Tab')
-                           #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
-                       ),
-                       box(width=12,
-                           h2('Data Connection'),
-                           p('Pending')
-                           #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
-                           
-                           #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
-                       )
-                ),#first column,
-                
-                column(6,
-                       h2("Required Data Format"),
+                       h3("Required Data Format"),
                        p('This application is designed to temporarily load the user\'s data file 
-                  into memory for the duration of application use. User data are not 
-                  retained on the server after application use.'),
+                         into memory for the duration of application use. User data are not 
+                         retained on the server after application use.'),
                        p('The following information describes the required data format.'),
                        
                        tags$ul(
@@ -200,20 +181,38 @@ ui <- dashboardPage(
                          tags$li('If you have R installed and use R, you can download this app from https://github.com/peernisse/wqdashboard/.'),
                          tags$li('The data to be analyzed must be in a `.csv` file in a local directory.'),
                          tags$li('The data are not transfered to the app server to preserve data security.')
-                       )
+                       ),
+                       p('Data are added by uploading a CSV file or Configuring connection to a database source such as SQL Server or MS Access.'),
                        
-                )#Second column,
+                       h3('Your Data File Should Contain the Folowing Columns'),
+                       tableOutput('fields'),
+                       
+                       h3('Example Table Structure') 
+                ),#first column,
+                column(
+                  width=4,
+                  h2("Data Importers",style="padding-left:10px;"),
+                  box(width=12,
+                      h2('Data Import'),
+                      uiOutput("format"),#This is the radio buttons to choose import file format
+                      uiOutput("chooseFile")#This is the UI interface for choosing a file
+                     
+                  ),#End box,
+                  
+                  box(width=12,
+                      h2('Data Connection (SQL Server/Access)'),
+                      p('Pending. This will eventually allow for a connection string (SQL Server) or file choose (Access)')
+                      #fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
+                      
+                      #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
+                  )#End box
+                )#End second column
                 
-              ),#end fluid row
+                
+                
+            )#end fluid row
               
-              fluidRow(
-                
-                h3('Your Data File Should Contain the Folowing Columns'),
-                tableOutput('fields'),
-               
-                h3('Example Table Structure') 
-                
-              )#End fluid row
+              
         
       ),#Import tab
       
@@ -460,27 +459,41 @@ server <- function(input, output,session) {
   #'####################################################
   #'######################################################
   #'###################################################
+  
+  #Create file input interface with accept = file type user choice
+  output$chooseFile<-renderUI({
+    
+    if(input$informat == "CSV (.csv)"){fmt<-'.csv'}
+    if(input$informat == "Excel (.xlsx)"){fmt<-'.xlsx'}
+    if(input$informat == "Tab Delimitted (.txt)"){fmt<-'.txt'}
+    
+    fileInput("file", buttonLabel = 'Choose File',label=NULL,
+              placeholder = 'Loading may take some time',
+              accept = fmt)
+    
+  })
 
   #File input load--------------
   pData <- reactive({
     
-    
     if(input$demoLoad == 0) {
-      inFile <- input$file
+      
+      inFile <- input$file #Sets inFile to the filepath sceletec in the UI
+      
     }
     
-    #if(input$demoLoad > 0 | input$demoLoad2 > 0){
-    if(input$demoLoad > 0 ){
-
+    #if(input$demoLoad > 0 ){
+    if(input$demoLoad > 0 ){ #This is saying to load the demo df if user clicks load demo dat
+      
       inFile<-data.frame(
         name='demoData',
         size=1413000,
         type='csv',
-
+        
         datapath='./data/testData.csv'
-
+        
       )
-
+      
       inFile$datapath<-as.character(inFile$datapath)
       
     }
@@ -488,35 +501,46 @@ server <- function(input, output,session) {
     
     if (is.null(inFile))
       return(NULL)
+    #print(inFile)
     
+    #User specified file----------------
+    #Read in table in specified format
     
-    #Read in table
-    tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+    #"CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"
     
-    #Fix date format
-
-    #tbl$Date<-as.POSIXct(strptime(tbl$sample_date,format="%d/%b/%y"))
-    #Fix unit cases
-    #tbl$Units<-fixUnits(tbl)
-    #Add units to parameter column
-    #tbl$Parameter<-paste0(tbl$Parameter,' (',tbl$Units,')')
-    #Make non detect substitution columns
-    #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
-    #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
-
-    #Set up limits column if it has been selected
+    if(input$informat == "CSV (.csv)"){
+      tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+    }
     
-  #   print(input$limcol)#Testing
-  # 
-  #   tbl$Limits<-tbl[,input$limcol]
-  # 
-  # print(names(tbl))
-  #   
+    if(input$informat == "Excel (.xlsx)"){
+      tbl <- read.xlsx(inFile$datapath, sheet = 1)#Data must be on first sheet
+    }
+    
+    if(input$informat == "Tab Delimitted (.txt)"){
+      tbl <- read.table(inFile$datapath, header=TRUE,sep='\t')#Data must be on first sheet
+    }
     
    
     
-    #Fix date format to be date
-    tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
+    #Fix date format to be date if from CSV/txt or if from excell
+    print(input$informat)
+    
+    if(input$informat == "CSV (.csv)"){
+      tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
+      
+    }
+    
+    if(input$informat == "Excel (.xlsx)"){
+      tbl$Date<-as.Date(tbl$Date, origin = "1899-12-30")
+    }
+    
+    if(input$informat == "Tab Delimitted (.txt)"){
+      tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
+    }
+    
+    print(class(tbl$Date))
+    
+    
     #Fix unit cases
     tbl<-fixUnits(tbl)
     #Create names for total and dissolved instead of just letters
@@ -559,31 +583,48 @@ server <- function(input, output,session) {
 
     
    return(tbl)
-  })
+  })#end pData
   
   #Get min and max dates-------------------
   baseDates <- reactive({
     if(input$demoLoad == 0) {
       inFile <- input$file
     }
-    
+
     if(input$demoLoad > 0){
-      
+
       inFile<-data.frame(
         name='demoData',
         size=1413000,
         type='csv',
         datapath='./data/testData.csv'
       )
-      
+
       inFile$datapath<-as.character(inFile$datapath)
     }
-    
+
     if (is.null(inFile))
       return(NULL)
+
+    # dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+    # dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+    # bDates<-c(min(dts$Date),max(dts$Date))
     
-    dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
-    dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+    if(input$informat == "CSV (.csv)"){
+      dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+      dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+    }
+    
+    if(input$informat == "Excel (.xlsx)"){
+      dts <- read.xlsx(inFile$datapath, sheet = 1)#Data must be on first sheet
+      dts$Date<-as.Date(dts$Date, origin = "1899-12-30")
+    }
+    
+    if(input$informat == "Tab Delimitted (.txt)"){
+      dts <- read.table(inFile$datapath, header=TRUE,sep='\t')
+      dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+    }
+    
     bDates<-c(min(dts$Date),max(dts$Date))
     
     return(bDates)#This could possibly combined into pData() as a separate output and referenced pData()$bDates
@@ -837,6 +878,11 @@ server <- function(input, output,session) {
   
   
   #Pickers----------------------------------------------------
+  #Create file input format picker to choose which file input function 
+  output$format<-renderUI({
+    radioButtons('informat',NULL,choices = c("CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"),
+                 selected="CSV (.csv)")
+  })
   
   #Create location picker
   #This loads up by default with first location picked just so folks are not confused
@@ -844,6 +890,7 @@ server <- function(input, output,session) {
 
     if(is.null(pData()))
       return()
+    
     locs<-sort(unique(pData()$Location))
 
     checkboxGroupInput('locids',NULL,
@@ -1111,6 +1158,7 @@ server <- function(input, output,session) {
     
     res <- nearPoints(tsData2(), input$tsClick,threshold = 3,maxpoints = 1)
     
+    
     if (nrow(res) == 0)
       return()
     res
@@ -1339,7 +1387,8 @@ server <- function(input, output,session) {
         
         setup<-rData %>% 
           filter(Parameter %in% c(input$regrY,input$regrX)) %>% 
-          select(Location,Date,Parameter,RESULT_ND)
+          select(Location,Date,Parameter,RESULT_ND) %>% 
+          setDT(.)
         
         setup$Parameter<-factor(setup$Parameter,levels=c(input$regrY,input$regrX))
         
