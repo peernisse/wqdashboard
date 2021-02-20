@@ -194,7 +194,14 @@ ui <- dashboardPage(
                   h2("Data Importers",style="padding-left:10px;"),
                   box(width=12,
                       h2('Data Import'),
-                      uiOutput("format"),#This is the radio buttons to choose import file format
+                      #I put these radio buttons in the UI to help the load demo data button
+                      #instead of server because the import process needs
+                      #input$informat to be defined, but it was not getting defined until you visited the 
+                      #data import page, but the load demo data button is on the home page and needs
+                      #this defined on startup. So I put it in GUI and works now
+                      radioButtons('informat',NULL,choices = c("CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"),
+                                   selected="CSV (.csv)"),
+                      #uiOutput("format"),#This is the radio buttons to choose import file format
                       uiOutput("chooseFile")#This is the UI interface for choosing a file
                      
                   ),#End box,
@@ -241,13 +248,19 @@ ui <- dashboardPage(
           
         fluidRow(
           
-          column(width = 6,
+          column(width = 4,
                  h4('Swap Faceting Variables'),
                  uiOutput('tsFacetSwap')
 
                  ),#End facet swap column
           
-          column(width = 6,
+          column(width = 4,
+                 h4('Swap Y to Log 10 (time series only)'),
+                 uiOutput('tsLogScale')
+                 
+          ),#End facet swap column
+          
+          column(width = 4,
                  h4('Set Scales Fixed or Auto'),
                  uiOutput('scalesSet')
                  
@@ -461,8 +474,10 @@ server <- function(input, output,session) {
   #'###################################################
   
   #Create file input interface with accept = file type user choice
+ 
   output$chooseFile<-renderUI({
     
+    req(input$informat)
     if(input$informat == "CSV (.csv)"){fmt<-'.csv'}
     if(input$informat == "Excel (.xlsx)"){fmt<-'.xlsx'}
     if(input$informat == "Tab Delimitted (.txt)"){fmt<-'.txt'}
@@ -482,18 +497,19 @@ server <- function(input, output,session) {
 
     }
     
+    
     #if(input$demoLoad > 0 ){
     if(input$demoLoad > 0 ){ #This is saying to load the demo df if user clicks load demo dat
-
+      
       inFile<-data.frame(
         name='demoData',
         size=1413000,
         type='csv',
-        
+
         datapath='./data/testData.csv'
-        
+
       )
-      
+
       inFile$datapath<-as.character(inFile$datapath)
       
     }
@@ -501,7 +517,9 @@ server <- function(input, output,session) {
     
     if (is.null(inFile))
       return(NULL)
-    #print(inFile)
+    
+    print(inFile)
+    print(input$informat)
     
     #User specified file----------------
     
@@ -510,48 +528,39 @@ server <- function(input, output,session) {
     
     #"CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"
     
+    # print(length(tbl))
+    # print(input$informat)
+    if (is.null(input$informat))
+      return(NULL)
+    
     if(input$informat == "CSV (.csv)"){
       tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
-    }
+    } 
     
     if(input$informat == "Excel (.xlsx)"){
       tbl <- read.xlsx(inFile$datapath, sheet = 1)#Data must be on first sheet
-    }
+    } 
     
     if(input$informat == "Tab Delimitted (.txt)"){
       tbl <- read.table(inFile$datapath, header=TRUE,sep='\t')#Data must be on first sheet
     }
-    #Fix date format
-
-    #tbl$Date<-as.POSIXct(strptime(tbl$sample_date,format="%d/%b/%y"))
-    #Fix unit cases
-    #tbl$Units<-fixUnits(tbl)
-    #Add units to parameter column
-    #tbl$Parameter<-paste0(tbl$Parameter,' (',tbl$Units,')')
-    #Make non detect substitution columns
-    #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
-    #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
-
-    #Set up limits column if it has been selected
-
+   
     
     #Fix date format to be date if from CSV/txt or if from excell
-    print(input$informat)
     
+      
     if(input$informat == "CSV (.csv)"){
       tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
       
-    }
+    } 
     
     if(input$informat == "Excel (.xlsx)"){
       tbl$Date<-as.Date(tbl$Date, origin = "1899-12-30")
-    }
+    } 
     
     if(input$informat == "Tab Delimitted (.txt)"){
       tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
-    }
-    
-    print(class(tbl$Date))
+    } 
     
     
     #Fix unit cases
@@ -701,6 +710,13 @@ server <- function(input, output,session) {
   output$tsFacetSwap<-renderUI({
     pickerInput('tsSwap',choices = c('Parameter','Location'),
                 selected='Parameter') 
+    
+  })
+  
+  #Create selection to log the y scale of the timeseries plot
+  output$tsLogScale<-renderUI({
+    pickerInput('tsLog',choices = c('None','Log 10'),
+                selected='None') 
     
   })
   
@@ -892,10 +908,10 @@ server <- function(input, output,session) {
   
   #Pickers----------------------------------------------------
   #Create file input format picker to choose which file input function 
-  output$format<-renderUI({
-    radioButtons('informat',NULL,choices = c("CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"),
-                 selected="CSV (.csv)")
-  })
+  # output$format<-renderUI({
+  #   radioButtons('informat',NULL,choices = c("CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"),
+  #                selected="CSV (.csv)")
+  # })
   
   #Create location picker
   #This loads up by default with first location picked just so folks are not confused
@@ -1093,22 +1109,23 @@ server <- function(input, output,session) {
     if(input$sclsChoices == 'Free Y, X Fixed'){scls<-'free_y'}
     if(input$sclsChoices == 'Free X, Y Fixed'){scls<-'free_x'}
     
+    #Make plotting data frame based on selected filter input
     
+      tsData<-pData() %>%
+        filter(
+          Location %in% input$locids,
+          Date >= input$dtRng[1] & Date<=input$dtRng[2],
+          Parameter %in% input$params,
+          Matrix %in% input$mtrx
+        ) %>%
+        as.data.frame(.)
+      
+      #Set the parameter names as a factor just alphabetic
+      tlvs<-pull(tsData,Parameter) %>% unique(.) %>% sort(.)
+      tsData$Parameter<-factor(tsData$Parameter,levels = tlvs)
+      
     
-    tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
-                                 Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                 Parameter %in% input$params,
-                                 Matrix %in% input$mtrx))
-    
-    tlvs<-pull(tsData,Parameter) %>% unique(.) %>% sort(.)
-    tsData$Parameter<-factor(tsData$Parameter,levels = tlvs)
-    
-    #print(str(tsData))
-    
-    #Make table of limits
-    #myTest<-"Not working"
-    print(input$limcol)
-    
+    #Make table of limits based on the selected column from the UI
     if(!is.null(input$limcol)){
       lData<-tsData %>%
         select(Parameter,input$limcol) %>%
@@ -1133,6 +1150,8 @@ server <- function(input, output,session) {
     }
 
       if(!is.null(input$limcol)){hline<-"Yes"} else {hline<-"No"}
+      
+      if(input$tsLog=="Log 10"){log<-"Yes"} else {log<-"No"}
     
     #print(head(lData))
     #print(hline)
@@ -1145,6 +1164,10 @@ server <- function(input, output,session) {
       {if(hline=="Yes")geom_hline(data = lData,aes(yintercept = Limits,linetype = 'Limit'),color='red')}+
       scale_fill_manual(values='white')+
       scale_linetype_manual(values = c('dashed'))+
+      {if(log=="Yes")scale_y_continuous(trans = 'log10')}+
+      {if(log=="Yes")annotation_logticks(sides="l")}+
+      #{if(log=="Yes")scale_y_log10()}+
+      #scale_y_log10()+
       facet_wrap(as.formula(paste('~',tsFacet)),scales=scls)+
       theme(legend.position = "bottom", legend.title = element_blank())+
       theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
