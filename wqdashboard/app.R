@@ -1073,6 +1073,9 @@ server <- function(input, output,session) {
     }
 
       if(!is.null(input$limcol)){hline<-"Yes"} else {hline<-"No"}
+    
+    #print(head(lData))
+    #print(hline)
    
     #testing ggplot logic inside this instead of function
     ggplot(tsData,aes(x=Date,y=RESULT_ND))+
