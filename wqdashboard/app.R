@@ -477,14 +477,14 @@ server <- function(input, output,session) {
   pData <- reactive({
     
     if(input$demoLoad == 0) {
-      
+
       inFile <- input$file #Sets inFile to the filepath sceletec in the UI
-      
+
     }
     
     #if(input$demoLoad > 0 ){
     if(input$demoLoad > 0 ){ #This is saying to load the demo df if user clicks load demo dat
-      
+
       inFile<-data.frame(
         name='demoData',
         size=1413000,
@@ -504,6 +504,8 @@ server <- function(input, output,session) {
     #print(inFile)
     
     #User specified file----------------
+    
+
     #Read in table in specified format
     
     #"CSV (.csv)","Excel (.xlsx)","Tab Delimitted (.txt)"
@@ -519,8 +521,19 @@ server <- function(input, output,session) {
     if(input$informat == "Tab Delimitted (.txt)"){
       tbl <- read.table(inFile$datapath, header=TRUE,sep='\t')#Data must be on first sheet
     }
-    
-   
+    #Fix date format
+
+    #tbl$Date<-as.POSIXct(strptime(tbl$sample_date,format="%d/%b/%y"))
+    #Fix unit cases
+    #tbl$Units<-fixUnits(tbl)
+    #Add units to parameter column
+    #tbl$Parameter<-paste0(tbl$Parameter,' (',tbl$Units,')')
+    #Make non detect substitution columns
+    #tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
+    #tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
+
+    #Set up limits column if it has been selected
+
     
     #Fix date format to be date if from CSV/txt or if from excell
     print(input$informat)
