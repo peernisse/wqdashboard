@@ -18,7 +18,9 @@ options(scipen = 6)
 ui <- dashboardPage(
   
   #Start dashboard header----------
-  dashboardHeader(title='Water Quality Explore',
+  dashboardHeader(
+    titleWidth = 400,
+    title='Water Quality Explore',
                   
                   dropdownMenu(type = "tasks", badgeStatus = "success",
                                taskItem(value = 90, color = "green",
@@ -109,6 +111,10 @@ ui <- dashboardPage(
   #Start dashboard body-----------
   
   dashboardBody(
+    tags$head(
+      tags$link(rel = "stylesheet", type = "text/css", href = "stanStyles.css"),
+      tags$style(HTML(".main-sidebar { font-size: 16px; }")) #change the font size to 20
+    ),
     tabItems(
       # Home tab content----------------
       tabItem(tabName = "home",
@@ -150,6 +156,11 @@ ui <- dashboardPage(
               p('This application is intended for exploratory data analysis. Any statistical tools/tests should be used
                 at the discretion of the user, and the user is responsible for any conclusions or decisions made as a result
                 of statistical analysis results.'),
+              tags$ul(
+                tags$li('This app is hosted on a Stantec internal server at http://10.13.40.119:3838/wqdashboard/'),
+                tags$li('If you have R installed and use R, you can download the latest version of this 
+                        app to your machine. Contact peter.eernisse@stantec.com')
+              ),#end ul
               
               h3('References'),
               tags$ul(
@@ -169,6 +180,10 @@ ui <- dashboardPage(
                 
                 column(8,
                        h2('Data Import Instructions'),
+                       p("This application is designed for you to import your own, formatted data file. 
+                         It will accept CSV(.csv), Excel(.xlsx), or Tab delimited(.txt) files. The 
+                         formatting required is based on Earth Soft's EQuIS export field names. The requirements 
+                         are described below."),
                        h3("Required Data Format"),
                        p('This application is designed to temporarily load the user\'s data file 
                          into memory for the duration of application use. User data are not 
@@ -177,17 +192,18 @@ ui <- dashboardPage(
                        
                        tags$ul(
                          
-                         tags$li('This app is hosted on the secure R Shinyapps.io server at https://peernisse/shinyapps.io/wqdashboard/.'),
-                         tags$li('If you have R installed and use R, you can download this app from https://github.com/peernisse/wqdashboard/.'),
-                         tags$li('The data to be analyzed must be in a `.csv` file in a local directory.'),
+                         
+                         tags$li('The data to be analyzed must be in one of the required file formats.'),
                          tags$li('The data are not transfered to the app server to preserve data security.')
                        ),
-                       p('Data are added by uploading a CSV file or Configuring connection to a database source such as SQL Server or MS Access.'),
+                       p('Data are added by uploading your formatted file or Configuring a connection to a database source such as SQL Server or MS Access.'),
                        
                        h3('Your Data File Should Contain the Folowing Columns'),
                        tableOutput('fields'),
                        
-                       h3('Example Table Structure') 
+                       h3('Example Table Structure'),
+                       p("Below is an example of a viable data table for import."),
+                       tags$img(src='table.jpg')
                 ),#first column,
                 column(
                   width=4,
@@ -213,6 +229,7 @@ ui <- dashboardPage(
                       
                       #actionButton(inputId = 'demoLoad',label = 'Load Demo Data')
                   )#End box
+                  
                 )#End second column
                 
                 
@@ -350,8 +367,8 @@ ui <- dashboardPage(
       
       #Regression tab-------------------
       tabItem(tabName = 'regression',
-              
-              box(title='Regression Tools',width=12,collapsible = TRUE,collapsed = FALSE,style="padding:35px;",
+              h3("Regression and Correlation Tools"),
+              box(title="Regression Tools",width=12,collapsible = TRUE,collapsed = FALSE,style="padding:35px;",
                   
                   fluidRow(
                     
@@ -390,8 +407,15 @@ ui <- dashboardPage(
                   )
                   
                   
-                  )#box
-              
+              ),#box
+              box(
+                title="Correlation Tools",width=12,collapsible = TRUE,collapsed = FALSE,style="padding:35px;",
+                fluidRow(
+                  p("Coming soon."),
+                  h3("Correlation Plot")
+                )#end fluidRow
+                
+              )#End box
               
       ),#Regression tab
      
@@ -399,28 +423,18 @@ ui <- dashboardPage(
       #Stats tab------------------
       tabItem(
         tabName = 'statstests',
-        fluidRow(
+        box(title="Descriptive Statistics",width=12,collapsible = TRUE,collapsed = TRUE,style="padding:35px;",
+          h3("Select Stats to Show"),
+          #actionLink('selectall_Stats','Select All | Clear All'),
+          uiOutput('choose_stats'),
+          DTOutput('statsData')
+        ),#end box
+        box(title="Trend Testing",width=12,collapsible = TRUE,collapsed = TRUE,style="padding:35px;"
           
-          column(12, h3('Select Stats to Show'),
-                 #actionLink('selectall_Stats','Select All | Clear All'),
-                 uiOutput('choose_stats')
-                 
-                 )#,#end column
+        ),#end box
+        box(title="ANOVA/t Test",width=12,collapsible = TRUE,collapsed = TRUE,style="padding:35px;"
           
-          # column(6,h3('Output this Table to CSV'),
-          #        fluidRow(
-          #          column(6,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
-          #          column(1,h4('.csv'),style='padding-left: 0px;'),
-          #          column(2,downloadButton('expStats','Download'))
-          #          
-          #        )#End fluid row
-          # )#End column
-        ),#End fluid row
-        
-        hr(),
-        
-       DTOutput('statsData')
-        
+        )#end box
         
         
       ),#stats tab
@@ -550,16 +564,16 @@ server <- function(input, output,session) {
     
       
     if(input$informat == "CSV (.csv)"){
-      tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
+      tbl$sample_date<-as.POSIXct(strptime(tbl$sample_date,format="%m/%d/%Y"))
       
     } 
     
     if(input$informat == "Excel (.xlsx)"){
-      tbl$Date<-as.Date(tbl$Date, origin = "1899-12-30")
+      tbl$sample_date<-as.Date(tbl$sample_date, origin = "1899-12-30")
     } 
     
     if(input$informat == "Tab Delimitted (.txt)"){
-      tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%m/%d/%Y"))
+      tbl$sample_date<-as.POSIXct(strptime(tbl$sample_date,format="%m/%d/%Y"))
     } 
     
     
@@ -567,7 +581,12 @@ server <- function(input, output,session) {
     tbl<-fixUnits(tbl)
     #Create names for total and dissolved instead of just letters
     tbl <- tbl %>%
-      mutate(PREP_CODE = case_when(
+      mutate(
+        Site = facility_code,
+        Matrix = matrix_desc,
+        Date = sample_date,
+        Location = loc_name,
+        PREP_CODE = case_when(
         
         fraction == 'D' ~ 'Dissolved',
         fraction == 'T' ~ 'Total',
@@ -577,8 +596,8 @@ server <- function(input, output,session) {
       Parameter=paste0(chemical_name,', ',PREP_CODE,' (',UNITS,')'),
       RESULT=case_when(
         
-        is.na(result_text) ~ 0,
-        TRUE ~ result_text
+        is.na(result_numeric) ~ 0,
+        TRUE ~ result_numeric
         
       ),
       
@@ -598,8 +617,8 @@ server <- function(input, output,session) {
         detect_flag == 'Y' ~ '=',
         TRUE ~ ''
       ),
-      LATITUDE=as.numeric(LATITUDE),
-      LONGITUDE=as.numeric(LONGITUDE)
+      LATITUDE=as.numeric(latitude),
+      LONGITUDE=as.numeric(longitude)
         
     )#mutate
 
@@ -634,20 +653,20 @@ server <- function(input, output,session) {
     
     if(input$informat == "CSV (.csv)"){
       dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
-      dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+      dts$sample_date<-as.POSIXct(strptime(dts$sample_date,format="%m/%d/%Y"))
     }
     
     if(input$informat == "Excel (.xlsx)"){
       dts <- read.xlsx(inFile$datapath, sheet = 1)#Data must be on first sheet
-      dts$Date<-as.Date(dts$Date, origin = "1899-12-30")
+      dts$sample_date<-as.Date(dts$sample_date, origin = "1899-12-30")
     }
     
     if(input$informat == "Tab Delimitted (.txt)"){
       dts <- read.table(inFile$datapath, header=TRUE,sep='\t')
-      dts$Date<-as.POSIXct(strptime(dts$Date,format="%m/%d/%Y"))
+      dts$sample_date<-as.POSIXct(strptime(dts$sample_date,format="%m/%d/%Y"))
     }
     
-    bDates<-c(min(dts$Date),max(dts$Date))
+    bDates<-c(min(dts$sample_date),max(dts$sample_date))
     
     return(bDates)#This could possibly combined into pData() as a separate output and referenced pData()$bDates
     
@@ -657,7 +676,7 @@ server <- function(input, output,session) {
   #Data table output-------------------
   #Output for long format data table
   
-  output$tblData <- renderDT({
+  output$tblData <- renderDT(server=FALSE,{
     if(is.null(input$locids))
       return()
     
@@ -809,7 +828,7 @@ server <- function(input, output,session) {
   
   
   #Stats summary data table output based on checkbox selection---------------------------
-  output$statsData <- renderDT({
+  output$statsData <- renderDT(server=FALSE,{
     if(is.null(input$locids)|is.null(input$stats))
       return()
     sData <- statSumm() %>% select(1:3,input$stats)

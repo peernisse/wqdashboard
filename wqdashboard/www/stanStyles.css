@@ -1,0 +1,46 @@
+/*Styles for goldsim shiny app*/
+
+/*.skin-blue .main-header .logo {
+    background-color: #ed7000;
+    font-size: 28px;
+}
+
+.skin-blue .main-header .navbar {
+  background-color: #ed7000;
+}
+
+
+.skin-blue .left-side, .skin-blue .main-sidebar, .skin-blue .wrapper {
+    background-color: #636363;
+}
+
+.skin-blue .sidebar-menu>li.active>a, .skin-blue .sidebar-menu>li:hover>a {
+    color: #fff;
+    background: #1e282c;
+    border-left-color: #ed7000;
+    border-left-width: 20px;
+}
+
+
+hr{
+  color:#636363;
+  size: 2px;
+  width: 95%;
+  
+}
+
+*/
+
+p {
+  font-size: 18px;
+}
+
+ul li {
+  font-size:18px;
+}
+
+.box-header .box-title, .box-header>.fa, .box-header>.glyphicon, .box-header>.ion {
+  font-size:24px;
+}
+
+

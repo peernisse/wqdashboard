@@ -4,20 +4,20 @@
 
 fields<-data.frame(
   FIELD_NAME = c(
-    'SITE',
-    'LOCATION',
-    'MATRIX',
-    'DATE',
-    'TIME',
-    'PARAMETER',
-    'FRACTION',
-    'RESULT',
-    'UNITS',
-    'DETECT_FLAG',
-    'REPORTING_LIMIT',
-    'MDL',
-    'LATITUDE',
-    'LONGITUDE'
+    'facility_code',
+    'loc_name',
+    'matrix_desc',
+    'sample_date',
+    
+    'chemical_name',
+    'fraction',
+    'result_numeric',
+    'result_unit',
+    'detect_flag',
+    'reporting_detection_limit',
+    '[Limit/Guideline]',
+    'latitude',
+    'longitude'
     
   ),
   REQUIRED = c(
@@ -25,14 +25,14 @@ fields<-data.frame(
     'Y',
     'Y',
     'Y',
+    
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
+    'Y',
     'N',
-    'Y',
-    'Y',
-    'Y',
-    'Y',
-    'Y',
-    'Y',
-    'Y',
     'N',
     'N'
     
@@ -42,7 +42,7 @@ fields<-data.frame(
     'Text',
     'Text',
     'Date',
-    'Text',
+    
     'Text',
     'Text',
     'Numeric',
@@ -55,19 +55,19 @@ fields<-data.frame(
     
   ),
   DESCRIPTION=c(
-    'A grouping for locations such as "Background", "Exposure"',
+    'A grouping variable for locations such as "Background", "Exposure". Or Sites such as "OU2", "OU8"',
     'Sample location names',
     'Sample matrix such as "Groundwater", "Air", etc.',
     'Date in mm/dd/yyyy format',
-    'text time in HH:MM format',
+    
     'Parameter name such as "Aluminum", "Depth to Water"',
-    'Analytical sample fraction such as "Total", "Dissolved"',
-    'Value of sample result. Non detect results entered as blank.',
+    'Analytical sample fraction. Must be in ("D","T", or blank. Other codes ignored)',
+    'Value of sample result. Non detect results must be entered as blank.',
     'Units of sample result',
-    'Binary "Y" for detections or "N" for non-detections',
-    'Sample result reporting limit',
-    'Sample result method detection limit',
-    'Lattitude in decimal degreees',
+    'Binary "Y" for detections or "N" for non-detections. Other codes ignored',
+    'Sample result reporting limit. Must not be blank in cases where detect_flag = "N"',
+    'One or more fields of environmental limits/guidelines (e.g., US federal drinking water MCL). Any column name(s) will work.',
+    'Latitude in decimal degreees',
     'Longitude in decimal degreees'
     
     
@@ -84,8 +84,18 @@ fixUnits<-function(df){
   df<-df %>% 
       mutate(UNITS = case_when(
       
-      Units == 'mg/l' ~ 'mg/L',
-      TRUE ~ 'mg/L'
+      result_unit == 'mg/l' ~ 'mg/L',
+      result_unit == 'MG/KG' ~ 'mg/kg',
+      result_unit == 'PCI/G' ~ 'pCi/g',
+      result_unit == 'MG/L' ~ 'mg/L',
+      result_unit == 'UG/L' ~ 'ug/L',
+      result_unit == '%' ~ 'percent',
+      result_unit == 'PCI/L' ~ 'pCi/L',
+      result_unit == 'DEG C' ~ 'deg C',
+      result_unit == 'SU' ~ 'pH units',
+      result_unit == 'US/CM' ~ 'uS/cm',
+      result_unit == 'MV' ~ 'mV',
+      TRUE ~ result_unit
       
       )
     
